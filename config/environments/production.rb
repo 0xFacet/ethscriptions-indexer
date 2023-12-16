@@ -50,7 +50,16 @@ Rails.application.configure do
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
 
   # Use a different cache store in production.
-  # config.cache_store = :mem_cache_store
+  config.cache_store = :mem_cache_store,
+  (ENV["MEMCACHIER_SERVERS"] || "").split(","),
+  {:username => ENV["MEMCACHIER_USERNAME"],
+   :password => ENV["MEMCACHIER_PASSWORD"],
+   :failover => true,
+   :socket_timeout => 1.5,
+   :socket_failure_delay => 0.2,
+   :down_retry_delay => 60,
+   compress: true
+  }
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
   # config.active_job.queue_adapter = :resque
@@ -65,6 +74,8 @@ Rails.application.configure do
 
   # Do not dump schema after migrations.
   config.active_record.dump_schema_after_migration = false
+  
+  config.active_record.async_query_executor = :global_thread_pool
 
   # Enable DNS rebinding protection and other `Host` header attacks.
   # config.hosts = [

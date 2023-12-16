@@ -9,7 +9,7 @@ Rails.application.configure do
   config.enable_reloading = true
 
   # Do not eager load code on boot.
-  config.eager_load = false
+  config.eager_load = true
 
   # Show full error reports.
   config.consider_all_requests_local = true
@@ -20,7 +20,15 @@ Rails.application.configure do
   # Enable/disable caching. By default caching is disabled.
   # Run rails dev:cache to toggle caching.
   if Rails.root.join("tmp/caching-dev.txt").exist?
-    config.cache_store = :memory_store
+    config.cache_store = :mem_cache_store,
+      'localhost',
+      {
+        failover: true,
+        socket_timeout: 1.5,
+        socket_failure_delay: 0.2,
+        down_retry_delay: 60,
+        compress: true
+      }
     config.public_file_server.headers = {
       "Cache-Control" => "public, max-age=#{2.days.to_i}"
     }
@@ -29,6 +37,8 @@ Rails.application.configure do
 
     config.cache_store = :null_store
   end
+  
+  config.logger = ActiveSupport::Logger.new(config.paths['log'].first, 1, 25 * 1_048_576)
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
@@ -48,6 +58,7 @@ Rails.application.configure do
   # Highlight code that enqueued background job in logs.
   config.active_job.verbose_enqueue_logs = true
 
+  config.active_record.async_query_executor = :global_thread_pool
 
   # Raises error for missing translations.
   # config.i18n.raise_on_missing_translations = true

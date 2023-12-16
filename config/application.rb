@@ -27,6 +27,15 @@ module EthsIndexer
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
     config.autoload_lib(ignore: %w(assets tasks))
+    
+    config.middleware.insert_after ActionDispatch::Static, Rack::Deflater
+    config.middleware.use ActionDispatch::Cookies
+    config.middleware.use ActionDispatch::Session::CookieStore
+    
+    additional_paths = %w(lib).map{|i| Rails.root.join(i)}
+    
+    config.autoload_paths += additional_paths
+    config.eager_load_paths += additional_paths
 
     # Configuration for the application, engines, and railties goes here.
     #

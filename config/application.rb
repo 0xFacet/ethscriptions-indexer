@@ -36,6 +36,8 @@ module EthsIndexer
     
     config.autoload_paths += additional_paths
     config.eager_load_paths += additional_paths
+    
+    config.active_record.schema_format = :sql
 
     # Configuration for the application, engines, and railties goes here.
     #

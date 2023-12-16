@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-ruby "3.0.0"
+ruby "3.2.2"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 7.1.2"
@@ -32,10 +32,47 @@ gem "bootsnap", require: false
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri mswin mswin64 mingw x64_mingw ]
+  gem "pry"
+  gem "rspec-rails"
 end
 
 group :development do
   # Speed up commands on slow machines / big apps [https://github.com/rails/spring]
   # gem "spring"
+  gem "stackprof", "~> 0.2.25"
+  gem "active_record_query_trace", "~> 1.8"
 end
 
+gem "dotenv-rails", "~> 2.8", groups: [:development, :test]
+
+gem "httpparty", "~> 0.2.0"
+
+gem "clockwork", "~> 3.0"
+
+gem "dalli", "~> 3.2"
+
+gem "kaminari", "~> 1.2"
+
+gem "airbrake", "~> 13.0"
+
+gem "rack-cors", "~> 2.0"
+
+gem "eth", "~> 0.5.11"
+
+gem "activerecord-import", "~> 1.5"
+
+gem "unparser", "~> 0.6.10"
+
+gem "scout_apm", "~> 5.3"
+
+gem "memoist", "~> 0.16.2"
+
+gem "awesome_print", "~> 1.9"
+
+gem "clipboard"
+
+gem "descriptive_statistics", "~> 2.5"
+
+gem "redis", "~> 5.0"
+
+gem "rack-attack", "~> 6.6"

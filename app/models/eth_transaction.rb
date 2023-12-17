@@ -127,7 +127,6 @@ class EthTransaction < ApplicationRecord
   
   def transfer_attrs
     {
-      transaction_hash: transaction_hash,
       block_number: block_number,
       block_timestamp: block_timestamp,
       transaction_index: transaction_index,
@@ -147,7 +146,7 @@ class EthTransaction < ApplicationRecord
     sorted_ethscriptions.each_with_index do |ethscription, index|
       ethscription_transfers.create!(
         {
-          ethscription_transaction_hash: transaction_hash,
+          ethscription_transaction_hash: ethscription.transaction_hash,
           from_address: from_address,
           to_address: to_address,
           transfer_index: transfer_index,
@@ -173,7 +172,7 @@ class EthTransaction < ApplicationRecord
         target_ethscription = Ethscription.find_by(transaction_hash: ethscription_transaction_hash)
   
         if target_ethscription.present?
-          EthscriptionTransfer.create!(
+          ethscription_transfers.create!(
             {
               ethscription_transaction_hash: target_ethscription.transaction_hash,
               from_address: log['address'],
@@ -195,7 +194,7 @@ class EthTransaction < ApplicationRecord
         target_ethscription = Ethscription.find_by(transaction_hash: ethscription_transaction_hash)
   
         if target_ethscription.present?
-          EthscriptionTransfer.create!(
+          ethscription_transfers.create!(
             {
               ethscription_transaction_hash: target_ethscription.transaction_hash,
               from_address: log['address'],

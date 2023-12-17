@@ -17,15 +17,6 @@ class EthscriptionTransfer < ApplicationRecord
   end
   
   def create_ownership_version!
-    # current_version = ethscription.current_ownership_version
-    
-    # transfers = valid_transfers_of_ethscription
-    
-    # ethscription.update!(
-    #   current_owner: transfers.last.to,
-    #   previous_owner: transfers.last.from
-    # )
-    
     if is_valid_transfer?
       EthscriptionOwnershipVersion.create!(
         transaction_hash: transaction_hash,

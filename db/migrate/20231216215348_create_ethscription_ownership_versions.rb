@@ -11,8 +11,11 @@ class CreateEthscriptionOwnershipVersions < ActiveRecord::Migration[7.1]
       t.string :current_owner, null: false
       t.string :previous_owner, null: false
       
+      t.index :ethscription_transaction_hash
+      t.index :transaction_hash
       t.index [:transaction_hash, :transfer_index], unique: true
       t.index [:block_number, :transaction_index, :transfer_index], unique: true
+      t.index [:ethscription_transaction_hash, :block_number, :transaction_index, :transfer_index], unique: true
       
       t.check_constraint "ethscription_transaction_hash ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "transaction_hash ~ '^0x[a-f0-9]{64}$'"

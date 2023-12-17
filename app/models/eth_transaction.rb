@@ -8,7 +8,7 @@ class EthTransaction < ApplicationRecord
   has_many :ethscription_transfers, foreign_key: :transaction_hash,
     primary_key: :transaction_hash, dependent: :destroy, inverse_of: :eth_transaction
 
-  attr_accessor :transfer_index, :already_created_ethscription
+  attr_accessor :transfer_index
   
   def possibly_relevant?
     status != 0 &&
@@ -41,20 +41,9 @@ class EthTransaction < ApplicationRecord
       value: value,
     }
   end
-  
-  # def get_and_consume_transfer_index
-  #   if @transfer_index.nil?
-  #     raise "Must initialize @transfer_index"
-  #   end
-    
-  #   @transfer_index.tap do
-  #     @transfer_index += 1
-  #   end
-  # end
 
   def process!
     self.transfer_index = 0
-    self.already_created_ethscription = false
     
     create_ethscription_from_input!
     create_ethscription_from_events!
@@ -63,7 +52,7 @@ class EthTransaction < ApplicationRecord
   end
 
   def create_ethscription_from_input!
-    potentially_valid = build_ethscription(
+    potentially_valid = Ethscription.new(
       {
         creator: from_address,
         previous_owner: from_address,
@@ -82,18 +71,18 @@ class EthTransaction < ApplicationRecord
     
       begin
         initial_owner = Eth::Abi.decode(['address'], creation_event['topics'].second).first
-        fixed_uri = Eth::Abi.decode(['string'], creation_event['data']).first
+        content_uri = Eth::Abi.decode(['string'], creation_event['data']).first
       rescue Eth::Abi::DecodingError
         next
       end
           
-      potentially_valid = build_ethscription(
+      potentially_valid = Ethscription.new(
         {
           creator: creation_event['address'],
           previous_owner: creation_event['address'],
           current_owner: initial_owner,
           initial_owner: initial_owner,
-          content_uri: fixed_uri,
+          content_uri: content_uri,
           event_log_index: creation_event['logIndex'].to_i(16),
         }.merge(ethscription_attrs)
       )
@@ -102,23 +91,17 @@ class EthTransaction < ApplicationRecord
     end
   end
   
-  def save_if_valid_and_no_ethscription_created!(ethscription)
-    # if @already_created_ethscription.nil?
-    #   raise "Must initialize @already_created_ethscription"
-    # end
+  def save_if_valid_and_no_ethscription_created!(potentially_valid)
+    return if ethscription.present?
     
-    # if !@already_created_ethscription && ethscription.valid_ethscription?
-    #   ethscription.save!
-    #   @already_created_ethscription = true
-    # end
-    # binding.pry
-    if ethscription.valid_ethscription?
-      ethscription.save!
+    if potentially_valid.valid_ethscription?
+      potentially_valid.eth_transaction = self
+      potentially_valid.save!
     end
   end
   
   def ethscription_creation_events
-    return [] unless EthTransaction.contracts_create_ethscriptions?(block_number)
+    return [] unless EthTransaction.esip3_enabled?(block_number)
     
     ordered_events.select do |log|
       EthTransaction.contracts_create_ethscription_event_sig == log['topics'].first
@@ -150,7 +133,6 @@ class EthTransaction < ApplicationRecord
           from_address: from_address,
           to_address: to_address,
           transfer_index: transfer_index,
-          # creation_method: :input
         }.merge(transfer_attrs)
       )
     end
@@ -178,7 +160,7 @@ class EthTransaction < ApplicationRecord
               from_address: log['address'],
               to_address: event_to,
               event_log_index: log['logIndex'].to_i(16),
-              transfer_index: transfer_index, #get_and_consume_transfer_index,
+              transfer_index: transfer_index,
             }.merge(transfer_attrs)
           )
         end
@@ -200,7 +182,7 @@ class EthTransaction < ApplicationRecord
               from_address: log['address'],
               to_address: event_to,
               event_log_index: log['logIndex'].to_i(16),
-              transfer_index: transfer_index, #get_and_consume_transfer_index,
+              transfer_index: transfer_index,
               enforced_previous_owner: event_previous_owner,
             }.merge(transfer_attrs)
           )
@@ -238,9 +220,7 @@ class EthTransaction < ApplicationRecord
   end
   
   def input_no_prefix
-    hex_string = input.dup
-    hex_string.slice!(0, 2) if hex_string.start_with?("0x")
-    hex_string
+    input.gsub(/\A0x/, '')
   end
   
   def essential_attributes
@@ -275,7 +255,7 @@ class EthTransaction < ApplicationRecord
     utf8_string.delete("\u0000")
   end
   
-  def self.contracts_create_ethscriptions?(block_number)
+  def self.esip3_enabled?(block_number)
     ENV['ETHEREUM_NETWORK'] == "eth-goerli" ||
     block_number >= 18130000
   end

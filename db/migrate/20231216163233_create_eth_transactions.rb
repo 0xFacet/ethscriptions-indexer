@@ -11,10 +11,10 @@ class CreateEthTransactions < ActiveRecord::Migration[7.1]
       t.integer :status
       t.jsonb :logs, default: [], null: false
       t.string :created_contract_address
-      t.numeric :gas_price
-      t.bigint :gas_used
-      t.numeric :transaction_fee
-      t.numeric :value
+      t.numeric :gas_price, null: false
+      t.bigint :gas_used, null: false
+      t.numeric :transaction_fee, null: false
+      t.numeric :value, null: false
 
       t.index [:block_number, :transaction_index], unique: true
       t.index :block_number

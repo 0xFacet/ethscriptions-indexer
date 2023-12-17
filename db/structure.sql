@@ -197,10 +197,10 @@ CREATE TABLE public.eth_transactions (
     status integer,
     logs jsonb DEFAULT '[]'::jsonb NOT NULL,
     created_contract_address character varying,
-    gas_price numeric,
-    gas_used bigint,
-    transaction_fee numeric,
-    value numeric,
+    gas_price numeric NOT NULL,
+    gas_used bigint NOT NULL,
+    transaction_fee numeric NOT NULL,
+    value numeric NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_51be5c1aa9 CHECK (((to_address IS NULL) OR ((to_address)::text ~ '^0x[a-f0-9]{40}$'::text))),
@@ -502,6 +502,20 @@ CREATE UNIQUE INDEX idx_on_block_number_transaction_index_transfer_inde_fc9ee599
 
 
 --
+-- Name: idx_on_ethscription_transaction_hash_block_number_t_a807d2b571; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_ethscription_transaction_hash_block_number_t_a807d2b571 ON public.ethscription_ownership_versions USING btree (ethscription_transaction_hash, block_number, transaction_index, transfer_index);
+
+
+--
+-- Name: idx_on_ethscription_transaction_hash_e9e1b526f9; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_ethscription_transaction_hash_e9e1b526f9 ON public.ethscription_ownership_versions USING btree (ethscription_transaction_hash);
+
+
+--
 -- Name: idx_on_transaction_hash_event_log_index_c192a81bef; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -597,6 +611,13 @@ CREATE INDEX index_eth_transactions_on_to_address ON public.eth_transactions USI
 --
 
 CREATE UNIQUE INDEX index_eth_transactions_on_transaction_hash ON public.eth_transactions USING btree (transaction_hash);
+
+
+--
+-- Name: index_ethscription_ownership_versions_on_transaction_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_ownership_versions_on_transaction_hash ON public.ethscription_ownership_versions USING btree (transaction_hash);
 
 
 --

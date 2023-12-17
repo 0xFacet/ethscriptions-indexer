@@ -10,17 +10,10 @@ class Ethscription < ApplicationRecord
   scope :newest_first, -> { order(block_number: :desc, transaction_index: :desc) }
   scope :oldest_first, -> { order(block_number: :asc, transaction_index: :asc) }
   
-  after_create :create_initial_transfer!, :notify_eth_transaction
+  before_validation :set_derived_attributes, on: :create
+  after_create :create_initial_transfer!
   
   MAX_MIMETYPE_LENGTH = 1000
-  
-  def notify_eth_transaction
-    if eth_transaction.already_created_ethscription.nil?
-      raise "Need eth_transaction.already_created_ethscription"
-    end
-    
-    eth_transaction.already_created_ethscription = true
-  end
   
   def create_initial_transfer!
     eth_transaction.ethscription_transfers.create!(
@@ -28,7 +21,7 @@ class Ethscription < ApplicationRecord
         ethscription_transaction_hash: transaction_hash,
         from_address: creator,
         to_address: initial_owner,
-        transfer_index: 0
+        transfer_index: eth_transaction.transfer_index,
       }.merge(eth_transaction.transfer_attrs)
     )
   end
@@ -50,41 +43,29 @@ class Ethscription < ApplicationRecord
     DataUri.new(content_uri)
   end
   
-  def content_uri=(input)
-    super(input)
-    
-    if input.nil?
-      self.valid_data_uri = false
-      self.esip6 = nil
-      self.content_sha = nil
-      return
-    end
-    
-    if valid_data_uri?
-      self.content_sha = "0x" + Digest::SHA256.hexdigest(input)
-      self.esip6 = DataUri.esip6?(input)
-      set_mimetype
-    end
+  def content_sha
+    "0x" + Digest::SHA256.hexdigest(content_uri)
+  end
+
+  def esip6
+    DataUri.esip6?(content_uri)
   end
   
-  def set_mimetype
+  def mimetype
     # TODO: Do we still need this?
-    self.mimetype = parsed_data_uri.mimetype.first(MAX_MIMETYPE_LENGTH)
-    
-    media_type, mime_subtype = self.mimetype.split('/')
-    
-    self.media_type = media_type
-    self.mime_subtype = mime_subtype
+    parsed_data_uri&.mimetype&.first(MAX_MIMETYPE_LENGTH)
+  end
+
+  def media_type
+    mimetype&.split('/')&.first
+  end
+
+  def mime_subtype
+    mimetype&.split('/')&.last
   end
   
   def valid_ethscription?
     raise "Need content_uri" if content_uri.nil?
-    if eth_transaction.already_created_ethscription.nil?
-      binding.pry
-      raise "Need eth_transaction.already_created_ethscription"
-    end
-    # 
-    eth_transaction.already_created_ethscription == false &&
     # [creator, current_owner, initial_owner].all?(&:present?) &&
     initial_owner.present? &&
     valid_data_uri? &&
@@ -100,5 +81,29 @@ class Ethscription < ApplicationRecord
       transaction_index: transaction_index,
       content_sha: content_sha
     ])
+  end
+  
+  def essential_attributes
+    attributes.slice(
+      "transaction_hash",
+      "block_number",
+      "from_address",
+      "to_address",
+      "creator",
+      "initial_owner",
+      "current_owner",
+      "previous_owner",
+      "content_sha",
+    )
+  end
+  
+  private
+
+  def set_derived_attributes
+    self[:content_sha] = content_sha
+    self[:esip6] = esip6
+    self[:mimetype] = mimetype
+    self[:media_type] = media_type
+    self[:mime_subtype] = mime_subtype
   end
 end

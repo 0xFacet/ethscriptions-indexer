@@ -79,7 +79,7 @@ class EthBlock < ApplicationRecord
   #       )['result']
         
   #       live_hash = block_data['hash']
-  #       saved_hash = block.block_hash
+  #       saved_hash = block.blockhash
         
   #       block if live_hash != saved_hash
   #     end
@@ -178,10 +178,10 @@ class EthBlock < ApplicationRecord
         
         eth_transactions.each(&:process!)
         
-        EthTransaction.where(block_number: block_number)
-          .where.not(transaction_hash: Ethscription.where(block_number: block_number).select(:transaction_hash))
-          .where.not(transaction_hash: EthscriptionTransfer.where(block_number: block_number).select(:transaction_hash))
-          .delete_all
+        # EthTransaction.where(block_number: block_number)
+        #   .where.not(transaction_hash: Ethscription.where(block_number: block_number).select(:transaction_hash))
+        #   .where.not(transaction_hash: EthscriptionTransfer.where(block_number: block_number).select(:transaction_hash))
+        #   .delete_all
       end
       
       block_record.update!(imported_at: Time.current)
@@ -208,12 +208,11 @@ class EthBlock < ApplicationRecord
   end
   
   def self.validate_ready_to_import!(block_by_number_response, receipts_response)
-    result = block_by_number_response['result']
-    
-    is_ready = result.present? &&
-    result['hash'].present? &&
-    receipts_response.dig('error', 'code') != -32600 &&
-    receipts_response.dig('error', 'message') != "Block being processed - please try again later"
+    is_ready = block_by_number_response.present? &&
+      block_by_number_response.dig('result', 'hash').present? &&
+      receipts_response.present? &&
+      receipts_response.dig('error', 'code') != -32600 &&
+      receipts_response.dig('error', 'message') != "Block being processed - please try again later"
     
     unless is_ready
       raise BlockNotReadyToImportError.new("Block not ready")

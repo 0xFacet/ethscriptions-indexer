@@ -94,6 +94,15 @@ RSpec.describe EthTransaction, type: :model do
               'data' => Eth::Abi.encode(['string'], ['data:,test-log']).unpack1('H*'),
               'logIndex' => 1.to_s(16),
               'address' => '0xe7dfe249c262a6a9b57651782d57296d2e4bccc9'
+            },
+            {
+              'topics' => [
+                EthTransaction.contracts_create_ethscription_event_sig,
+                Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
+              ],
+              'data' => Eth::Abi.encode(['string'], ['data:,test-log-2']).unpack1('H*'),
+              'logIndex' => 2.to_s(16),
+              'address' => '0xe7dfe249c262a6a9b57651782d57296d2e4bccc9'
             }
           ]
         )
@@ -101,6 +110,7 @@ RSpec.describe EthTransaction, type: :model do
         expect(Ethscription.count).to eq(2)
         
         created = Ethscription.last
+        expect(Ethscription.first.content).to eq("test")
         expect(created.content).to eq("test-log")
         expect(created.creator).to eq("0xe7dfe249c262a6a9b57651782d57296d2e4bccc9")
         expect(created.event_log_index).to eq(1)

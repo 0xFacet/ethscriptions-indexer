@@ -184,6 +184,10 @@ class EthBlock < ApplicationRecord
     end
   end
   
+  def self.next_block_to_import
+    next_blocks_to_import(1).first
+  end
+  
   def self.next_blocks_to_import(n)
     max_db_block = EthBlock.maximum(:block_number)
     

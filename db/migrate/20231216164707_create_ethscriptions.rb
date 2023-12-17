@@ -7,25 +7,25 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
       t.bigint :block_timestamp, null: false
       t.bigint :event_log_index
       
-      t.bigint :ethscription_number, null: false
+      t.bigint :ethscription_number#, null: false
       t.string :creator, null: false
       t.string :initial_owner, null: false
       t.string :current_owner, null: false
       t.string :previous_owner, null: false
 
-      t.boolean :valid_data_uri, null: false
+      # t.boolean :valid_data_uri, null: false
       t.text :content_uri, null: false
       t.string :content_sha, null: false
-      t.boolean :content_unique
+      # t.boolean :content_unique
       t.boolean :esip6, null: false
       t.string :mimetype, null: false
       t.string :media_type, null: false
       t.string :mime_subtype, null: false
       
-      t.numeric :gas_price
-      t.bigint :gas_used
-      t.numeric :transaction_fee
-      t.numeric :value
+      t.numeric :gas_price, null: false
+      t.bigint :gas_used, null: false
+      t.numeric :transaction_fee, null: false
+      t.numeric :value, null: false
       
       t.index [:block_number, :transaction_index], unique: true
       t.index :transaction_hash, unique: true
@@ -35,12 +35,12 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
       t.index :creator
       t.index :current_owner
       t.index :ethscription_number, unique: true
-      t.index [:content_unique, :valid_data_uri]
-      t.index :content_unique, where: "(content_unique IS NOT NULL)"
+      # t.index [:content_unique, :valid_data_uri]
+      # t.index :content_unique, where: "(content_unique IS NOT NULL)"
       t.index :content_sha
-      t.index :content_sha, unique: true, where: "(content_unique = true)",
+      t.index :content_sha, unique: true, where: "(esip6 = false)",
         name: :index_ethscriptions_on_content_sha_unique
-      t.index :valid_data_uri
+      # t.index :valid_data_uri
       t.index :initial_owner
       t.index :media_type
       t.index :mime_subtype
@@ -48,7 +48,7 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
       t.index :previous_owner
       t.index :transaction_index
       
-      t.check_constraint "esip6 = true OR content_unique IS NOT NULL"
+      # t.check_constraint "esip6 = true OR content_unique IS NOT NULL"
       t.check_constraint "content_sha ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "transaction_hash ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "creator ~ '^0x[a-f0-9]{40}$'"

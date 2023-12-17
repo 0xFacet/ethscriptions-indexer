@@ -25,7 +25,7 @@ class CreateEthTransactions < ActiveRecord::Migration[7.1]
 
       t.check_constraint "block_number <= 4370000 AND status IS NULL OR block_number > 4370000 AND status = 1", name: "status_check"
       t.check_constraint "created_contract_address IS NULL AND to_address IS NOT NULL OR
-        created_contract_address\ IS NOT NULL AND to_address IS NULL", name: "contract_to_check"
+        created_contract_address IS NOT NULL AND to_address IS NULL", name: "contract_to_check"
         
       t.check_constraint "transaction_hash ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "from_address ~ '^0x[a-f0-9]{40}$'"

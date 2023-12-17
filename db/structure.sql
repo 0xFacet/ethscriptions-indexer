@@ -10,6 +10,30 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: check_block_imported_at(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_block_imported_at() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+          BEGIN
+            IF NEW.imported_at IS NOT NULL THEN
+              IF EXISTS (
+                SELECT 1
+                FROM eth_blocks
+                WHERE block_number < NEW.block_number
+                  AND imported_at IS NULL
+                LIMIT 1
+              ) THEN
+                RAISE EXCEPTION 'Previous block not yet imported';
+              END IF;
+            END IF;
+            RETURN NEW;
+          END;
+          $$;
+
+
+--
 -- Name: check_block_order(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -63,6 +87,46 @@ CREATE FUNCTION public.delete_later_blocks() RETURNS trigger
           $$;
 
 
+--
+-- Name: update_current_owner(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_current_owner() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+          DECLARE
+            latest_ownership_version RECORD;
+          BEGIN
+            IF TG_OP = 'INSERT' THEN
+              SELECT INTO latest_ownership_version *
+              FROM ethscription_ownership_versions
+              WHERE ethscription_transaction_hash = NEW.ethscription_transaction_hash
+              ORDER BY block_number DESC, transaction_index DESC
+              LIMIT 1;
+
+              UPDATE ethscriptions
+              SET current_owner = latest_ownership_version.current_owner,
+                  previous_owner = latest_ownership_version.previous_owner
+              WHERE transaction_hash = NEW.ethscription_transaction_hash;
+            ELSIF TG_OP = 'DELETE' THEN
+              SELECT INTO latest_ownership_version *
+              FROM ethscription_ownership_versions
+              WHERE ethscription_transaction_hash = OLD.ethscription_transaction_hash
+                AND id != OLD.id
+              ORDER BY block_number DESC, transaction_index DESC
+              LIMIT 1;
+
+              UPDATE ethscriptions
+              SET current_owner = latest_ownership_version.current_owner,
+                  previous_owner = latest_ownership_version.previous_owner
+              WHERE transaction_hash = OLD.ethscription_transaction_hash;
+            END IF;
+
+            RETURN NULL; -- result is ignored since this is an AFTER trigger
+          END;
+          $$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -89,7 +153,7 @@ CREATE TABLE public.eth_blocks (
     "timestamp" bigint NOT NULL,
     blockhash character varying NOT NULL,
     parent_blockhash character varying NOT NULL,
-    imported_at timestamp(6) without time zone NOT NULL,
+    imported_at timestamp(6) without time zone,
     is_genesis_block boolean NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
@@ -168,18 +232,62 @@ ALTER SEQUENCE public.eth_transactions_id_seq OWNED BY public.eth_transactions.i
 
 
 --
+-- Name: ethscription_ownership_versions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ethscription_ownership_versions (
+    id bigint NOT NULL,
+    transaction_hash character varying NOT NULL,
+    ethscription_transaction_hash character varying NOT NULL,
+    transfer_index bigint NOT NULL,
+    block_number bigint NOT NULL,
+    transaction_index bigint NOT NULL,
+    block_timestamp bigint NOT NULL,
+    current_owner character varying NOT NULL,
+    previous_owner character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_rails_0401bc8d3b CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
+    CONSTRAINT chk_rails_073cb8a4e9 CHECK (((current_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_b5b3ce91a9 CHECK (((previous_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_f8a9e94d3c CHECK (((ethscription_transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text))
+);
+
+
+--
+-- Name: ethscription_ownership_versions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ethscription_ownership_versions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ethscription_ownership_versions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ethscription_ownership_versions_id_seq OWNED BY public.ethscription_ownership_versions.id;
+
+
+--
 -- Name: ethscription_transfers; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.ethscription_transfers (
     id bigint NOT NULL,
+    ethscription_transaction_hash character varying NOT NULL,
     transaction_hash character varying NOT NULL,
     from_address character varying NOT NULL,
     to_address character varying NOT NULL,
     block_number bigint NOT NULL,
+    block_timestamp bigint NOT NULL,
     event_log_index bigint,
+    transfer_index bigint NOT NULL,
     transaction_index bigint NOT NULL,
-    creation_method integer NOT NULL,
     enforced_previous_owner character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
@@ -220,30 +328,27 @@ CREATE TABLE public.ethscriptions (
     transaction_index bigint NOT NULL,
     block_timestamp bigint NOT NULL,
     event_log_index bigint,
-    ethscription_number bigint NOT NULL,
+    ethscription_number bigint,
     creator character varying NOT NULL,
     initial_owner character varying NOT NULL,
     current_owner character varying NOT NULL,
     previous_owner character varying NOT NULL,
-    valid_data_uri boolean NOT NULL,
     content_uri text NOT NULL,
     content_sha character varying NOT NULL,
-    content_unique boolean,
     esip6 boolean NOT NULL,
     mimetype character varying NOT NULL,
     media_type character varying NOT NULL,
     mime_subtype character varying NOT NULL,
-    gas_price numeric,
-    gas_used bigint,
-    transaction_fee numeric,
-    value numeric,
+    gas_price numeric NOT NULL,
+    gas_used bigint NOT NULL,
+    transaction_fee numeric NOT NULL,
+    value numeric NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_52497428f2 CHECK (((previous_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_528fcbfbaa CHECK (((content_sha)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_6f8922831e CHECK (((current_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_84591e2730 CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
-    CONSTRAINT chk_rails_a5d8fb3bc9 CHECK (((esip6 = true) OR (content_unique IS NOT NULL))),
     CONSTRAINT chk_rails_b577b97822 CHECK (((creator)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_df21fdbe02 CHECK (((initial_owner)::text ~ '^0x[a-f0-9]{40}$'::text))
 );
@@ -292,6 +397,13 @@ ALTER TABLE ONLY public.eth_transactions ALTER COLUMN id SET DEFAULT nextval('pu
 
 
 --
+-- Name: ethscription_ownership_versions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ethscription_ownership_versions ALTER COLUMN id SET DEFAULT nextval('public.ethscription_ownership_versions_id_seq'::regclass);
+
+
+--
 -- Name: ethscription_transfers id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -327,6 +439,14 @@ ALTER TABLE ONLY public.eth_blocks
 
 ALTER TABLE ONLY public.eth_transactions
     ADD CONSTRAINT eth_transactions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ethscription_ownership_versions ethscription_ownership_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ethscription_ownership_versions
+    ADD CONSTRAINT ethscription_ownership_versions_pkey PRIMARY KEY (id);
 
 
 --
@@ -368,10 +488,38 @@ CREATE UNIQUE INDEX idx_on_block_number_transaction_index_event_log_ind_94b2c4b9
 
 
 --
+-- Name: idx_on_block_number_transaction_index_transfer_inde_8090d24b9e; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_block_number_transaction_index_transfer_inde_8090d24b9e ON public.ethscription_ownership_versions USING btree (block_number, transaction_index, transfer_index);
+
+
+--
+-- Name: idx_on_block_number_transaction_index_transfer_inde_fc9ee59957; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_block_number_transaction_index_transfer_inde_fc9ee59957 ON public.ethscription_transfers USING btree (block_number, transaction_index, transfer_index);
+
+
+--
 -- Name: idx_on_transaction_hash_event_log_index_c192a81bef; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX idx_on_transaction_hash_event_log_index_c192a81bef ON public.ethscription_transfers USING btree (transaction_hash, event_log_index);
+
+
+--
+-- Name: idx_on_transaction_hash_transfer_index_4389678e0a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_transaction_hash_transfer_index_4389678e0a ON public.ethscription_transfers USING btree (transaction_hash, transfer_index);
+
+
+--
+-- Name: idx_on_transaction_hash_transfer_index_b79931daa1; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_transaction_hash_transfer_index_b79931daa1 ON public.ethscription_ownership_versions USING btree (transaction_hash, transfer_index);
 
 
 --
@@ -511,21 +659,7 @@ CREATE INDEX index_ethscriptions_on_content_sha ON public.ethscriptions USING bt
 -- Name: index_ethscriptions_on_content_sha_unique; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_ethscriptions_on_content_sha_unique ON public.ethscriptions USING btree (content_sha) WHERE (content_unique = true);
-
-
---
--- Name: index_ethscriptions_on_content_unique; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ethscriptions_on_content_unique ON public.ethscriptions USING btree (content_unique) WHERE (content_unique IS NOT NULL);
-
-
---
--- Name: index_ethscriptions_on_content_unique_and_valid_data_uri; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ethscriptions_on_content_unique_and_valid_data_uri ON public.ethscriptions USING btree (content_unique, valid_data_uri);
+CREATE UNIQUE INDEX index_ethscriptions_on_content_sha_unique ON public.ethscriptions USING btree (content_sha) WHERE (esip6 = false);
 
 
 --
@@ -599,10 +733,10 @@ CREATE INDEX index_ethscriptions_on_transaction_index ON public.ethscriptions US
 
 
 --
--- Name: index_ethscriptions_on_valid_data_uri; Type: INDEX; Schema: public; Owner: -
+-- Name: eth_blocks check_block_imported_at_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE INDEX index_ethscriptions_on_valid_data_uri ON public.ethscriptions USING btree (valid_data_uri);
+CREATE TRIGGER check_block_imported_at_trigger BEFORE UPDATE OF imported_at ON public.eth_blocks FOR EACH ROW EXECUTE FUNCTION public.check_block_imported_at();
 
 
 --
@@ -627,6 +761,13 @@ CREATE TRIGGER trigger_delete_later_blocks AFTER DELETE ON public.eth_blocks FOR
 
 
 --
+-- Name: ethscription_ownership_versions update_current_owner; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_current_owner AFTER INSERT OR DELETE ON public.ethscription_ownership_versions FOR EACH ROW EXECUTE FUNCTION public.update_current_owner();
+
+
+--
 -- Name: ethscriptions fk_rails_104cee2b3d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -647,7 +788,15 @@ ALTER TABLE ONLY public.ethscriptions
 --
 
 ALTER TABLE ONLY public.ethscription_transfers
-    ADD CONSTRAINT fk_rails_2fe933886e FOREIGN KEY (transaction_hash) REFERENCES public.ethscriptions(transaction_hash) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_rails_2fe933886e FOREIGN KEY (transaction_hash) REFERENCES public.eth_transactions(transaction_hash) ON DELETE CASCADE;
+
+
+--
+-- Name: ethscription_transfers fk_rails_479ac03c16; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ethscription_transfers
+    ADD CONSTRAINT fk_rails_479ac03c16 FOREIGN KEY (ethscription_transaction_hash) REFERENCES public.ethscriptions(transaction_hash) ON DELETE CASCADE;
 
 
 --
@@ -659,11 +808,35 @@ ALTER TABLE ONLY public.eth_transactions
 
 
 --
+-- Name: ethscription_ownership_versions fk_rails_8808aa138a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ethscription_ownership_versions
+    ADD CONSTRAINT fk_rails_8808aa138a FOREIGN KEY (ethscription_transaction_hash) REFERENCES public.ethscriptions(transaction_hash) ON DELETE CASCADE;
+
+
+--
 -- Name: ethscription_transfers fk_rails_b68511af4b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ethscription_transfers
     ADD CONSTRAINT fk_rails_b68511af4b FOREIGN KEY (block_number) REFERENCES public.eth_blocks(block_number) ON DELETE CASCADE;
+
+
+--
+-- Name: ethscription_ownership_versions fk_rails_e95d97c83e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ethscription_ownership_versions
+    ADD CONSTRAINT fk_rails_e95d97c83e FOREIGN KEY (block_number) REFERENCES public.eth_blocks(block_number) ON DELETE CASCADE;
+
+
+--
+-- Name: ethscription_ownership_versions fk_rails_ed1fdc1619; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ethscription_ownership_versions
+    ADD CONSTRAINT fk_rails_ed1fdc1619 FOREIGN KEY (transaction_hash) REFERENCES public.eth_transactions(transaction_hash) ON DELETE CASCADE;
 
 
 --
@@ -673,6 +846,7 @@ ALTER TABLE ONLY public.ethscription_transfers
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20231216215348'),
 ('20231216213103'),
 ('20231216164707'),
 ('20231216163233'),

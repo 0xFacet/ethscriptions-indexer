@@ -5,7 +5,7 @@ class CreateEthBlocks < ActiveRecord::Migration[7.1]
       t.bigint :timestamp, null: false
       t.string :blockhash, null: false
       t.string :parent_blockhash, null: false
-      t.datetime :imported_at, null: false
+      t.datetime :imported_at
       
       t.boolean :is_genesis_block, null: false
       
@@ -59,6 +59,30 @@ class CreateEthBlocks < ActiveRecord::Migration[7.1]
           AFTER DELETE ON eth_blocks
           FOR EACH ROW EXECUTE FUNCTION delete_later_blocks();
         SQL
+        
+        execute <<-SQL
+          CREATE OR REPLACE FUNCTION check_block_imported_at()
+          RETURNS TRIGGER AS $$
+          BEGIN
+            IF NEW.imported_at IS NOT NULL THEN
+              IF EXISTS (
+                SELECT 1
+                FROM eth_blocks
+                WHERE block_number < NEW.block_number
+                  AND imported_at IS NULL
+                LIMIT 1
+              ) THEN
+                RAISE EXCEPTION 'Previous block not yet imported';
+              END IF;
+            END IF;
+            RETURN NEW;
+          END;
+          $$ LANGUAGE plpgsql;
+
+          CREATE TRIGGER check_block_imported_at_trigger
+          BEFORE UPDATE OF imported_at ON eth_blocks
+          FOR EACH ROW EXECUTE FUNCTION check_block_imported_at();
+        SQL
       end
 
       dir.down do
@@ -68,6 +92,9 @@ class CreateEthBlocks < ActiveRecord::Migration[7.1]
           
           DROP TRIGGER IF EXISTS trigger_delete_later_blocks ON eth_blocks;
           DROP FUNCTION IF EXISTS delete_later_blocks();
+          
+          DROP TRIGGER IF EXISTS check_block_imported_at_trigger ON eth_blocks;
+          DROP FUNCTION IF EXISTS check_block_imported_at();      
         SQL
       end
     end

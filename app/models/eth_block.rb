@@ -23,15 +23,19 @@ class EthBlock < ApplicationRecord
     EthBlock.where.not(imported_at: nil).order(block_number: :desc).limit(1).pluck(:block_number).first
   end
   
+  def self.import_batch_size
+    ENV.fetch('BLOCK_IMPORT_BATCH_SIZE', 2).to_i
+  end
+  
   def self.import_blocks_until_done
     loop do
       begin
         last_imported = nil
         elapsed = Benchmark.ms do
-          last_imported = EthBlock.import_next_block
+          last_imported = EthBlock.import_blocks(
+            EthBlock.next_blocks_to_import(import_batch_size)
+          )
         end
-        
-        puts "Imported #{last_imported} in #{elapsed.round}ms"
       rescue BlockNotReadyToImportError => e
         puts "#{e.message}. Stopping import."
         break
@@ -45,80 +49,48 @@ class EthBlock < ApplicationRecord
     end
   end
   
-  # def self.handle_long_reorgs
-  #   last_finalized_block = AlchemyClient.query_api(
-  #     method: 'eth_getBlockByNumber',
-  #     params: ['finalized', false]
-  #   )['result']['number'].to_i(16)
+  def self.import_blocks(block_numbers)
+    logger.info "Block Importer: importing blocks #{block_numbers.join(', ')}"
+    start = Time.current
     
-  #   detect_and_rollback_reorg(from_block: last_finalized_block)
-  # end
-  
-  # def self.handle_short_reorgs
-  #   detect_and_rollback_reorg(from_block: Ethscription.partially_confirmed_block_number)
-  # end
-  
-  # def self.handle_medium_reorgs
-  #   detect_and_rollback_reorg(
-  #     from_block: Ethscription.partially_confirmed_block_number - 7
-  #   )
-  # end
-  
-  # def self.detect_and_rollback_reorg(from_block:)
-  #   ActiveRecord::Base.transaction do
-  #     possible_reorg_blocks = EthBlock.where(
-  #       "block_number > ?", from_block
-  #     ).order(block_number: :asc)
-      
-  #     oldest_reorged_block = possible_reorg_blocks.detect do |block|
-  #       block_data = AlchemyClient.query_api(
-  #         method: 'eth_getBlockByNumber',
-  #         params: ['0x' + block.block_number.to_s(16), false]
-  #       )['result']
-        
-  #       live_hash = block_data['hash']
-  #       saved_hash = block.blockhash
-        
-  #       block if live_hash != saved_hash
-  #     end
-      
-  #     raise ActiveRecord::Rollback if oldest_reorged_block.blank?
-      
-  #     blocks_to_reimport = EthBlock.where("block_number >= ?", oldest_reorged_block.block_number)
-      
-  #     destroyed = blocks_to_reimport.each(&:destroy!)
-      
-  #     current_block_number = EthBlock.uncached_global_block_number
-
-  #     Airbrake.notify("Current block: #{current_block_number}, reorg detected: #{oldest_reorged_block.block_number}, destroyed blocks: #{destroyed.map(&:block_number)}")
-  #   end
-  # end
-  
-  def self.import_block(block_number)
-    logger.info "Block Importer: importing #{block_number}"
-    
-    ActiveRecord::Base.transaction do
-      unless EthBlock.next_block_to_import == block_number
-        logger.info "Block Importer: #{block_number} is not next to import"
-        raise ActiveRecord::Rollback
-      end
-      
-      block_by_number_promise = Concurrent::Promise.execute do
-        AlchemyClient.query_api(
+    block_by_number_promises = block_numbers.map do |block_number|
+      Concurrent::Promise.execute do
+        [block_number, AlchemyClient.query_api(
           method: 'eth_getBlockByNumber',
           params: ['0x' + block_number.to_s(16), true]
-        )
+        )]
       end
-      
-      receipts_promise = Concurrent::Promise.execute do
-        AlchemyClient.query_api(
+    end
+    
+    receipts_promises = block_numbers.map do |block_number|
+      Concurrent::Promise.execute do
+        [block_number, AlchemyClient.query_api(
           method: 'alchemy_getTransactionReceipts',
           params: [{ blockNumber: "0x" + block_number.to_s(16) }]
-        )
+        )]
       end
-      
-      block_by_number_response = block_by_number_promise.value
-      receipts_response = receipts_promise.value      
+    end
+    
+    block_by_number_responses = block_by_number_promises.map(&:value).sort_by(&:first)
+    receipts_responses = receipts_promises.map(&:value).sort_by(&:first)
+    
+    block_by_number_responses.zip(receipts_responses).each do |(block_number1, block_by_number_response), (block_number2, receipts_response)|
+      raise "Mismatched block numbers: #{block_number1} and #{block_number2}" unless block_number1 == block_number2
+      import_block(block_number1, block_by_number_response, receipts_response)
+    end
+    
+    blocks_per_second = (block_numbers.length / (Time.current - start)).round(2)
+    puts "Imported #{block_numbers.length} blocks. #{blocks_per_second} blocks / s"
+    
+    block_numbers.length
+  end
+  
+  def self.import_block(block_number, block_by_number_response, receipts_response)
+    ActiveRecord::Base.transaction do
+      # unless EthBlock.next_block_to_import == block_number
+      #   logger.info "Block Importer: #{block_number} is not next to import"
+      #   raise ActiveRecord::Rollback
+      # end
       
       result = block_by_number_response['result']
       
@@ -184,7 +156,7 @@ class EthBlock < ApplicationRecord
       
       block_record.update!(imported_at: Time.current)
       
-      logger.info "Block Importer: imported block #{block_number}"
+      puts "Block Importer: imported block #{block_number}"
     end
   rescue ActiveRecord::RecordNotUnique => e
     if e.message.include?("eth_blocks") && e.message.include?("block_number")
@@ -217,18 +189,18 @@ class EthBlock < ApplicationRecord
     end
   end
   
-  def self.next_block_to_import
+  def self.next_blocks_to_import(n)
     max_db_block = EthBlock.maximum(:block_number)
     
-    return genesis_blocks.min unless max_db_block
+    return genesis_blocks.sort.first(n) unless max_db_block
     
     if max_db_block < genesis_blocks.max
       imported_genesis_blocks = EthBlock.where.not(imported_at: nil).where(block_number: genesis_blocks).pluck(:block_number).to_set
-      
-      return (genesis_blocks.to_set - imported_genesis_blocks).min
+      remaining_genesis_blocks = (genesis_blocks.to_set - imported_genesis_blocks).sort
+      return remaining_genesis_blocks.first(n)
     end
-
-    max_db_block + 1
+  
+    (max_db_block + 1..max_db_block + n).to_a
   end
   
   def essential_attributes

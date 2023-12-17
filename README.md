@@ -60,6 +60,8 @@ Migrate the database schema:
 rails db:migrate
 ```
 
+You will also need memcache to use this. You can install it with homebrew as well. Consult ChatGPT!
+
 Set up your env vars by renaming `.sample.env` to `.env`. You will need an Alchemy API key for this to work!
 
 Run the tests to make sure everything is set up correctly:

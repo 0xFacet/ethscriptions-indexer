@@ -39,12 +39,10 @@ class EthBlock < ApplicationRecord
     end
   end
   
-  # def self.a
-  #   import_next_block
-  # end
-  
   def self.import_next_block
-    import_block(next_block_to_import)
+    next_block_to_import.tap do |block|
+      import_block(block)
+    end
   end
   
   # def self.handle_long_reorgs

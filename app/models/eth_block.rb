@@ -147,11 +147,6 @@ class EthBlock < ApplicationRecord
         eth_transactions = EthTransaction.where(block_number: block_number).order(transaction_index: :asc)
         
         eth_transactions.each(&:process!)
-        
-        # EthTransaction.where(block_number: block_number)
-        #   .where.not(transaction_hash: Ethscription.where(block_number: block_number).select(:transaction_hash))
-        #   .where.not(transaction_hash: EthscriptionTransfer.where(block_number: block_number).select(:transaction_hash))
-        #   .delete_all
       end
       
       block_record.update!(imported_at: Time.current)

@@ -33,6 +33,10 @@ module Clockwork
   #   EthBlock.delay.handle_long_reorgs
   # end
   
+  every(5.minutes, 'set_ethscription_numbers') do
+    EthTransaction.delay.prune_transactions(priority: 1)
+  end
+  
   every(20.minutes, 'set_ethscription_numbers') do
     Ethscription.set_ethscription_numbers_no_duplicate_jobs(1.hour.ago)
   end

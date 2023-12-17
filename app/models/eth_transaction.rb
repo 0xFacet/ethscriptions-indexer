@@ -306,4 +306,11 @@ class EthTransaction < ApplicationRecord
     end
     memoize :esip1_transfer_event_signature
   end
+  
+  def self.prune_transactions
+    EthTransaction
+      .where.not(transaction_hash: Ethscription.select(:transaction_hash))
+      .where.not(transaction_hash: EthscriptionTransfer.select(:transaction_hash))
+      .delete_all
+  end
 end

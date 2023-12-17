@@ -76,3 +76,5 @@ gem "descriptive_statistics", "~> 2.5"
 gem "redis", "~> 5.0"
 
 gem "rack-attack", "~> 6.6"
+
+gem "delayed_job_active_record", "~> 4.1"

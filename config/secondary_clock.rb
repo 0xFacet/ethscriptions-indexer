@@ -34,7 +34,7 @@ module Clockwork
   # end
   
   every(5.minutes, 'set_ethscription_numbers') do
-    EthTransaction.delay.prune_transactions(priority: 1)
+    EthTransaction.delay(priority: 1).prune_transactions
   end
   
   every(20.minutes, 'set_ethscription_numbers') do

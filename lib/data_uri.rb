@@ -7,7 +7,7 @@ class DataUri
     )?
     (?<extension>;base64)?
     ,
-    (?<data>.*)\z
+    (?<data>.*)
   }x.freeze
 
   attr_reader :uri, :match

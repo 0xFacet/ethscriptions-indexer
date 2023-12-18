@@ -73,14 +73,7 @@ class Ethscription < ApplicationRecord
   end
   
   def content_is_unique?
-    !Ethscription.exists?([
-      '(block_number < :block_number OR ' +
-      '(block_number = :block_number AND transaction_index < :transaction_index)) AND ' +
-      'content_sha = :content_sha',
-      block_number: block_number,
-      transaction_index: transaction_index,
-      content_sha: content_sha
-    ])
+    !Ethscription.exists?(content_sha: content_sha)
   end
   
   def essential_attributes

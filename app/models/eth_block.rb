@@ -45,7 +45,7 @@ class EthBlock < ApplicationRecord
   
   def self.import_next_block
     next_block_to_import.tap do |block|
-      import_block(block)
+      import_blocks([block])
     end
   end
   

@@ -146,12 +146,13 @@ class EthTransaction < ApplicationRecord
       if event_type == EthTransaction.esip1_transfer_event_signature
         begin
           event_to = Eth::Abi.decode(['address'], topics.third).first
-          ethscription_transaction_hash = Eth::Abi.decode(['bytes32'], topics.third).first
         rescue Eth::Abi::DecodingError
           next
         end
       
-        target_ethscription = Ethscription.find_by(transaction_hash: ethscription_transaction_hash)
+        next unless valid_bytes32?(topics.third)
+
+        target_ethscription = Ethscription.find_by(transaction_hash: topics.third)
   
         if target_ethscription.present?
           ethscription_transfers.create!(
@@ -168,12 +169,13 @@ class EthTransaction < ApplicationRecord
         begin
           event_previous_owner = Eth::Abi.decode(['address'], topics.second).first
           event_to = Eth::Abi.decode(['address'], topics.third).first
-          ethscription_transaction_hash = Eth::Abi.decode(['bytes32'], topics.fourth).first
         rescue Eth::Abi::DecodingError
           next
         end
         
-        target_ethscription = Ethscription.find_by(transaction_hash: ethscription_transaction_hash)
+        next unless valid_bytes32?(topics.fourth)
+        
+        target_ethscription = Ethscription.find_by(transaction_hash: topics.fourth)
   
         if target_ethscription.present?
           ethscription_transfers.create!(
@@ -273,6 +275,10 @@ class EthTransaction < ApplicationRecord
   def self.esip1_enabled?(block_number)
     ENV['ETHEREUM_NETWORK'] == "eth-goerli" ||
     block_number >= 17672762
+  end
+  
+  def valid_bytes32?(value)
+    /\A0x[0-9a-f]{64}\z/i.match?(value.to_s)
   end
   
   def self.contract_transfer_event_signatures(block_number)

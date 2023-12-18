@@ -37,7 +37,7 @@ module Clockwork
     EthTransaction.delay(priority: 1).prune_transactions
   end
   
-  every(20.minutes, 'set_ethscription_numbers') do
-    Ethscription.set_ethscription_numbers_no_duplicate_jobs(1.hour.ago)
+  every(10.minutes, 'set_ethscription_numbers') do
+    Ethscription.set_ethscription_numbers_no_duplicate_jobs(30.minutes.ago)
   end
 end

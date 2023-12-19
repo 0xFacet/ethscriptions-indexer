@@ -29,8 +29,8 @@ class CreateEthTransactions < ActiveRecord::Migration[7.1]
         
       t.check_constraint "transaction_hash ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "from_address ~ '^0x[a-f0-9]{40}$'"
-      t.check_constraint "to_address IS NULL OR to_address ~ '^0x[a-f0-9]{40}$'"
-      t.check_constraint "created_contract_address IS NULL OR created_contract_address ~ '^0x[a-f0-9]{40}$'"
+      t.check_constraint "to_address ~ '^0x[a-f0-9]{40}$'"
+      t.check_constraint "created_contract_address ~ '^0x[a-f0-9]{40}$'"
 
       t.foreign_key :eth_blocks, column: :block_number, primary_key: :block_number, on_delete: :cascade
       

@@ -8,6 +8,18 @@ class EthscriptionTransfer < ApplicationRecord
     
   after_create :create_ownership_version!, :notify_eth_transaction
   
+  scope :newest_first, -> { order(
+    block_number: :desc,
+    transaction_index: :desc,
+    transfer_index: :desc
+  )}
+  
+  scope :oldest_first, -> { order(
+    block_number: :asc,
+    transaction_index: :asc,
+    transfer_index: :asc
+  )}
+  
   def notify_eth_transaction
     if eth_transaction.transfer_index.nil?
       raise "Need eth_transaction.transfer_index"

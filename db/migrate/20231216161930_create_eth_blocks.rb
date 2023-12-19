@@ -8,6 +8,8 @@ class CreateEthBlocks < ActiveRecord::Migration[7.1]
       t.string :blockhash, null: false
       t.string :parent_blockhash, null: false
       t.datetime :imported_at
+      t.string :state_hash
+      t.string :parent_state_hash
       
       t.boolean :is_genesis_block, null: false
       
@@ -20,6 +22,8 @@ class CreateEthBlocks < ActiveRecord::Migration[7.1]
     
       t.check_constraint "blockhash ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "parent_blockhash ~ '^0x[a-f0-9]{64}$'"
+      t.check_constraint "state_hash ~ '^0x[a-f0-9]{64}$'"
+      t.check_constraint "parent_state_hash ~ '^0x[a-f0-9]{64}$'"
       
       t.timestamps
     end
@@ -47,6 +51,29 @@ class CreateEthBlocks < ActiveRecord::Migration[7.1]
           CREATE TRIGGER trigger_check_block_order
           BEFORE INSERT ON eth_blocks
           FOR EACH ROW EXECUTE FUNCTION check_block_order();
+        SQL
+        
+        execute <<~SQL
+          CREATE OR REPLACE FUNCTION check_block_order_on_update()
+          RETURNS TRIGGER AS $$
+          BEGIN
+            IF NEW.imported_at IS NOT NULL AND NEW.state_hash IS NULL THEN
+              RAISE EXCEPTION 'state_hash must be set when imported_at is set';
+            END IF;
+          
+            IF NEW.is_genesis_block = false AND 
+              NEW.parent_state_hash <> (SELECT state_hash FROM eth_blocks WHERE block_number = NEW.block_number - 1 AND imported_at IS NOT NULL) THEN
+              RAISE EXCEPTION 'Parent state hash does not match the state hash of the previous block';
+            END IF;
+          
+            RETURN NEW;
+          END;
+          $$ LANGUAGE plpgsql;
+          
+          CREATE TRIGGER trigger_check_block_order_on_update
+          BEFORE UPDATE OF imported_at ON eth_blocks
+          FOR EACH ROW WHEN (NEW.imported_at IS NOT NULL)
+          EXECUTE FUNCTION check_block_order_on_update();
         SQL
         
         execute <<-SQL

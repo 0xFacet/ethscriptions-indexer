@@ -13,6 +13,7 @@ class CreateEthscriptionOwnershipVersions < ActiveRecord::Migration[7.1]
       
       t.index :ethscription_transaction_hash
       t.index :transaction_hash
+      t.index :block_number
       t.index [:transaction_hash, :transfer_index], unique: true
       t.index [:block_number, :transaction_index, :transfer_index], unique: true
       t.index [:ethscription_transaction_hash, :block_number, :transaction_index, :transfer_index], unique: true

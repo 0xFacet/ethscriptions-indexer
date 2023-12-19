@@ -64,10 +64,32 @@ CREATE FUNCTION public.check_block_order() RETURNS trigger
               NEW.parent_blockhash <> (SELECT blockhash FROM eth_blocks WHERE block_number = NEW.block_number - 1) THEN
               RAISE EXCEPTION 'Parent block hash does not match the parent''s block hash';
             END IF;
-
+            
             RETURN NEW;
           END;
           $$;
+
+
+--
+-- Name: check_block_order_on_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_block_order_on_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.imported_at IS NOT NULL AND NEW.state_hash IS NULL THEN
+    RAISE EXCEPTION 'state_hash must be set when imported_at is set';
+  END IF;
+
+  IF NEW.is_genesis_block = false AND 
+    NEW.parent_state_hash <> (SELECT state_hash FROM eth_blocks WHERE block_number = NEW.block_number - 1 AND imported_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'Parent state hash does not match the state hash of the previous block';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
 
 
 --
@@ -208,10 +230,14 @@ CREATE TABLE public.eth_blocks (
     blockhash character varying NOT NULL,
     parent_blockhash character varying NOT NULL,
     imported_at timestamp(6) without time zone,
+    state_hash character varying,
+    parent_state_hash character varying,
     is_genesis_block boolean NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_1c105acdac CHECK (((parent_blockhash)::text ~ '^0x[a-f0-9]{64}$'::text)),
+    CONSTRAINT chk_rails_319237323b CHECK (((state_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
+    CONSTRAINT chk_rails_7126b7c9d3 CHECK (((parent_state_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_7e9881ece2 CHECK (((blockhash)::text ~ '^0x[a-f0-9]{64}$'::text))
 );
 
@@ -257,10 +283,10 @@ CREATE TABLE public.eth_transactions (
     value numeric NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT chk_rails_51be5c1aa9 CHECK (((to_address IS NULL) OR ((to_address)::text ~ '^0x[a-f0-9]{40}$'::text))),
-    CONSTRAINT chk_rails_93b41d08e7 CHECK (((created_contract_address IS NULL) OR ((created_contract_address)::text ~ '^0x[a-f0-9]{40}$'::text))),
+    CONSTRAINT chk_rails_37ed5d6017 CHECK (((to_address)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_9cdbd3b1ad CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_a4d3f41974 CHECK (((from_address)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_d460e80110 CHECK (((created_contract_address)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT contract_to_check CHECK ((((created_contract_address IS NULL) AND (to_address IS NOT NULL)) OR ((created_contract_address IS NOT NULL) AND (to_address IS NULL)))),
     CONSTRAINT status_check CHECK ((((block_number <= 4370000) AND (status IS NULL)) OR ((block_number > 4370000) AND (status = 1))))
 );
@@ -400,10 +426,10 @@ CREATE TABLE public.ethscriptions (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_52497428f2 CHECK (((previous_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_528fcbfbaa CHECK (((content_sha)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_6f8922831e CHECK (((current_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_84591e2730 CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_b577b97822 CHECK (((creator)::text ~ '^0x[a-f0-9]{40}$'::text)),
-    CONSTRAINT chk_rails_d741e3044d CHECK (((content_sha)::text ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_df21fdbe02 CHECK (((initial_owner)::text ~ '^0x[a-f0-9]{40}$'::text))
 );
 
@@ -697,6 +723,13 @@ CREATE UNIQUE INDEX index_eth_transactions_on_transaction_hash ON public.eth_tra
 
 
 --
+-- Name: index_ethscription_ownership_versions_on_block_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_ownership_versions_on_block_number ON public.ethscription_ownership_versions USING btree (block_number);
+
+
+--
 -- Name: index_ethscription_ownership_versions_on_transaction_hash; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -855,6 +888,13 @@ CREATE TRIGGER check_block_imported_at_trigger BEFORE UPDATE OF imported_at ON p
 --
 
 CREATE TRIGGER trigger_check_block_order BEFORE INSERT ON public.eth_blocks FOR EACH ROW EXECUTE FUNCTION public.check_block_order();
+
+
+--
+-- Name: eth_blocks trigger_check_block_order_on_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trigger_check_block_order_on_update BEFORE UPDATE OF imported_at ON public.eth_blocks FOR EACH ROW WHEN ((new.imported_at IS NOT NULL)) EXECUTE FUNCTION public.check_block_order_on_update();
 
 
 --

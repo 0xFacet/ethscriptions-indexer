@@ -15,4 +15,10 @@ class EthscriptionOwnershipVersion < ApplicationRecord
     transaction_index: :desc,
     transfer_index: :desc
   )}
+  
+  scope :oldest_first, -> { order(
+    block_number: :asc,
+    transaction_index: :asc,
+    transfer_index: :asc
+  )}
 end

@@ -1,14 +1,18 @@
 
 class EthTransaction < ApplicationRecord
   belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
-    inverse_of: :eth_transaction
+    inverse_of: :eth_block
   has_one :ethscription, foreign_key: :transaction_hash, primary_key: :transaction_hash,
-    inverse_of: :eth_transaction, dependent: :destroy
-
+    inverse_of: :eth_transaction, inverse_of: :eth_transaction
   has_many :ethscription_transfers, foreign_key: :transaction_hash,
-    primary_key: :transaction_hash, dependent: :destroy, inverse_of: :eth_transaction
+    primary_key: :transaction_hash, inverse_of: :eth_transaction
+  has_many :ethscription_ownership_versions, foreign_key: :transaction_hash,
+    primary_key: :transaction_hash, inverse_of: :eth_transaction
 
   attr_accessor :transfer_index
+  
+  scope :newest_first, -> { order(block_number: :desc, transaction_index: :desc) }
+  scope :oldest_first, -> { order(block_number: :asc, transaction_index: :asc) }
   
   def self.event_signature(event_name)
     "0x" + Digest::Keccak256.hexdigest(event_name)

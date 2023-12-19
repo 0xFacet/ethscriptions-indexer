@@ -10,27 +10,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: heroku_ext; Type: SCHEMA; Schema: -; Owner: -
---
-
-CREATE SCHEMA heroku_ext;
-
-
---
--- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
-
-
---
--- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
-
-
---
 -- Name: check_block_imported_at(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -407,10 +386,10 @@ CREATE TABLE public.ethscriptions (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_52497428f2 CHECK (((previous_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
-    CONSTRAINT chk_rails_528fcbfbaa CHECK (((content_sha)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_6f8922831e CHECK (((current_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_84591e2730 CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_b577b97822 CHECK (((creator)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_d741e3044d CHECK (((content_sha)::text ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_df21fdbe02 CHECK (((initial_owner)::text ~ '^0x[a-f0-9]{40}$'::text))
 );
 
@@ -641,6 +620,13 @@ CREATE INDEX index_eth_blocks_on_imported_at ON public.eth_blocks USING btree (i
 
 
 --
+-- Name: index_eth_blocks_on_imported_at_and_block_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_eth_blocks_on_imported_at_and_block_number ON public.eth_blocks USING btree (imported_at, block_number);
+
+
+--
 -- Name: index_eth_blocks_on_parent_blockhash; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -778,6 +764,13 @@ CREATE INDEX index_ethscriptions_on_creator ON public.ethscriptions USING btree 
 --
 
 CREATE INDEX index_ethscriptions_on_current_owner ON public.ethscriptions USING btree (current_owner);
+
+
+--
+-- Name: index_ethscriptions_on_esip6; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscriptions_on_esip6 ON public.ethscriptions USING btree (esip6);
 
 
 --
@@ -950,7 +943,6 @@ ALTER TABLE ONLY public.ethscription_ownership_versions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
-('20231219131956'),
 ('20231217190431'),
 ('20231216215348'),
 ('20231216213103'),

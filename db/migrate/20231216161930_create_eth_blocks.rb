@@ -12,6 +12,7 @@ class CreateEthBlocks < ActiveRecord::Migration[7.1]
       t.index :block_number, unique: true
       t.index :blockhash, unique: true
       t.index :imported_at
+      t.index [:imported_at, :block_number]
       t.index :parent_blockhash, unique: true
       t.index :timestamp
     

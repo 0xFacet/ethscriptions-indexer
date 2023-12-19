@@ -10,7 +10,6 @@ class CreateEthscriptionTransfers < ActiveRecord::Migration[7.1]
       t.bigint :event_log_index
       t.bigint :transfer_index, null: false
       t.bigint :transaction_index, null: false
-      # t.integer :creation_esip, null: false
       t.string :enforced_previous_owner
 
       t.index :block_number

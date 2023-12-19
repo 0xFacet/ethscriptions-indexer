@@ -7,6 +7,8 @@ class EthBlock < ApplicationRecord
     inverse_of: :eth_block
   has_many :ethscription_transfers, foreign_key: :block_number, primary_key: :block_number,
     inverse_of: :eth_block
+  has_many :ethscription_ownership_versions, foreign_key: :block_number, primary_key: :block_number,
+    inverse_of: :eth_block
   
   def self.genesis_blocks
     blocks = if ENV.fetch('ETHEREUM_NETWORK') == "eth-mainnet"

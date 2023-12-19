@@ -1,5 +1,7 @@
 class CreateEthBlocks < ActiveRecord::Migration[7.1]
   def change
+    enable_extension 'pgcrypto' unless extension_enabled?('pgcrypto')
+    
     create_table :eth_blocks, force: :cascade do |t|
       t.bigint :block_number, null: false
       t.bigint :timestamp, null: false

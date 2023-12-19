@@ -1,4 +1,6 @@
 class Ethscription < ApplicationRecord
+  include DataValidationHelper
+  
   belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
     inverse_of: :ethscription
   belongs_to :eth_transaction, foreign_key: :transaction_hash, primary_key: :transaction_hash, optional: true, inverse_of: :ethscription
@@ -10,7 +12,7 @@ class Ethscription < ApplicationRecord
   scope :newest_first, -> { order(block_number: :desc, transaction_index: :desc) }
   scope :oldest_first, -> { order(block_number: :asc, transaction_index: :asc) }
   
-  before_validation :set_derived_attributes, on: :create
+  before_validation :set_derived_attributes, :set_ethscription_number, on: :create
   after_create :create_initial_transfer!
   
   MAX_MIMETYPE_LENGTH = 1000
@@ -132,6 +134,10 @@ class Ethscription < ApplicationRecord
   
   private
 
+  def set_ethscription_number
+    self[:ethscription_number] = (Ethscription.maximum(:ethscription_number) || -1) + 1
+  end
+  
   def set_derived_attributes
     self[:content_sha] = content_sha
     self[:esip6] = esip6

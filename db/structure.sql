@@ -10,6 +10,27 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: heroku_ext; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA heroku_ext;
+
+
+--
+-- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
+
+
+--
 -- Name: check_block_imported_at(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -57,16 +78,19 @@ CREATE FUNCTION public.check_block_order() RETURNS trigger
 
 
 --
--- Name: check_ethscription_order(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: check_ethscription_order_and_sequence(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.check_ethscription_order() RETURNS trigger
+CREATE FUNCTION public.check_ethscription_order_and_sequence() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
           BEGIN
             IF NEW.block_number < (SELECT MAX(block_number) FROM ethscriptions) OR
             (NEW.block_number = (SELECT MAX(block_number) FROM ethscriptions) AND NEW.transaction_index <= (SELECT MAX(transaction_index) FROM ethscriptions WHERE block_number = NEW.block_number)) THEN
               RAISE EXCEPTION 'Ethscriptions must be created in order';
+            END IF;
+            IF NEW.ethscription_number != (SELECT COALESCE(MAX(ethscription_number), -1) + 1 FROM ethscriptions) THEN
+              RAISE EXCEPTION 'Ethscription numbers must be added in sequence';
             END IF;
             RETURN NEW;
           END;
@@ -367,7 +391,7 @@ CREATE TABLE public.ethscriptions (
     transaction_index bigint NOT NULL,
     block_timestamp bigint NOT NULL,
     event_log_index bigint,
-    ethscription_number bigint,
+    ethscription_number bigint NOT NULL,
     creator character varying NOT NULL,
     initial_owner character varying NOT NULL,
     current_owner character varying NOT NULL,
@@ -829,10 +853,10 @@ CREATE TRIGGER trigger_check_block_order BEFORE INSERT ON public.eth_blocks FOR 
 
 
 --
--- Name: ethscriptions trigger_check_ethscription_order; Type: TRIGGER; Schema: public; Owner: -
+-- Name: ethscriptions trigger_check_ethscription_order_and_sequence; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER trigger_check_ethscription_order BEFORE INSERT ON public.ethscriptions FOR EACH ROW EXECUTE FUNCTION public.check_ethscription_order();
+CREATE TRIGGER trigger_check_ethscription_order_and_sequence BEFORE INSERT ON public.ethscriptions FOR EACH ROW EXECUTE FUNCTION public.check_ethscription_order_and_sequence();
 
 
 --
@@ -928,6 +952,7 @@ ALTER TABLE ONLY public.ethscription_ownership_versions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20231219131956'),
 ('20231217190431'),
 ('20231216215348'),
 ('20231216213103'),

@@ -30,11 +30,12 @@ class EthBlock < ApplicationRecord
   def self.import_blocks_until_done
     loop do
       begin
-        last_imported = nil
-        elapsed = Benchmark.ms do
-          last_imported = EthBlock.import_blocks(
-            EthBlock.next_blocks_to_import(import_batch_size)
-          )
+        numbers_imported = EthBlock.import_blocks(
+          EthBlock.next_blocks_to_import(import_batch_size)
+        )
+        
+        if numbers_imported.any?{|i| i % 100 == 0}
+          EthTransaction.delay(priority: 1).prune_transactions
         end
       rescue BlockNotReadyToImportError => e
         puts "#{e.message}. Stopping import."
@@ -74,15 +75,18 @@ class EthBlock < ApplicationRecord
     block_by_number_responses = block_by_number_promises.map(&:value).sort_by(&:first)
     receipts_responses = receipts_promises.map(&:value).sort_by(&:first)
     
+    res = []
+    
     block_by_number_responses.zip(receipts_responses).each do |(block_number1, block_by_number_response), (block_number2, receipts_response)|
       raise "Mismatched block numbers: #{block_number1} and #{block_number2}" unless block_number1 == block_number2
-      import_block(block_number1, block_by_number_response, receipts_response)
+      res << import_block(block_number1, block_by_number_response, receipts_response)
     end
     
     blocks_per_second = (block_numbers.length / (Time.current - start)).round(2)
+    puts "Imported #{res.map(&:ethscription_imported).sum} ethscriptions"
     puts "Imported #{block_numbers.length} blocks. #{blocks_per_second} blocks / s"
     
-    block_numbers.length
+    block_numbers
   end
   
   def self.import_block(block_number, block_by_number_response, receipts_response)
@@ -147,11 +151,17 @@ class EthBlock < ApplicationRecord
         eth_transactions = EthTransaction.where(block_number: block_number).order(transaction_index: :asc)
         
         eth_transactions.each(&:process!)
+        
+        ethscription_imported = eth_transactions.map(&:ethscription).compact.size
       end
       
       block_record.update!(imported_at: Time.current)
       
       puts "Block Importer: imported block #{block_number}"
+      
+      OpenStruct.new(
+        ethscription_imported: ethscription_imported.to_i
+      )
     end
   rescue ActiveRecord::RecordNotUnique => e
     if e.message.include?("eth_blocks") && e.message.include?("block_number")

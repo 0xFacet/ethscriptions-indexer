@@ -316,6 +316,7 @@ DEPENDENCIES
   descriptive_statistics (~> 2.5)
   dotenv-rails (~> 2.8)
   eth (~> 0.5.11)
+  httparty (~> 0.21.0)
   httpparty (~> 0.2.0)
   kaminari (~> 1.2)
   memoist (~> 0.16.2)

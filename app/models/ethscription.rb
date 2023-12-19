@@ -12,7 +12,7 @@ class Ethscription < ApplicationRecord
   scope :newest_first, -> { order(block_number: :desc, transaction_index: :desc) }
   scope :oldest_first, -> { order(block_number: :asc, transaction_index: :asc) }
   
-  before_validation :set_derived_attributes, :set_ethscription_number, on: :create
+  before_validation :set_derived_attributes, on: :create
   after_create :create_initial_transfer!
   
   MAX_MIMETYPE_LENGTH = 1000
@@ -133,10 +133,6 @@ class Ethscription < ApplicationRecord
   end
   
   private
-
-  def set_ethscription_number
-    self[:ethscription_number] = (Ethscription.maximum(:ethscription_number) || -1) + 1
-  end
   
   def set_derived_attributes
     self[:content_sha] = content_sha

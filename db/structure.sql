@@ -89,9 +89,7 @@ CREATE FUNCTION public.check_ethscription_order_and_sequence() RETURNS trigger
             (NEW.block_number = (SELECT MAX(block_number) FROM ethscriptions) AND NEW.transaction_index <= (SELECT MAX(transaction_index) FROM ethscriptions WHERE block_number = NEW.block_number)) THEN
               RAISE EXCEPTION 'Ethscriptions must be created in order';
             END IF;
-            IF NEW.ethscription_number != (SELECT COALESCE(MAX(ethscription_number), -1) + 1 FROM ethscriptions) THEN
-              RAISE EXCEPTION 'Ethscription numbers must be added in sequence';
-            END IF;
+            NEW.ethscription_number := (SELECT COALESCE(MAX(ethscription_number), -1) + 1 FROM ethscriptions);
             RETURN NEW;
           END;
           $$;

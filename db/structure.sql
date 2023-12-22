@@ -10,24 +10,17 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: heroku_ext; Type: SCHEMA; Schema: -; Owner: -
+-- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
 --
 
-CREATE SCHEMA heroku_ext;
-
-
---
--- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 
 
 --
--- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
+-- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: -
 --
 
-COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
+COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
 
 
 --
@@ -75,6 +68,28 @@ CREATE FUNCTION public.check_block_order() RETURNS trigger
             RETURN NEW;
           END;
           $$;
+
+
+--
+-- Name: check_block_order_on_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_block_order_on_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.imported_at IS NOT NULL AND NEW.state_hash IS NULL THEN
+    RAISE EXCEPTION 'state_hash must be set when imported_at is set';
+  END IF;
+
+  IF NEW.is_genesis_block = false AND 
+    NEW.parent_state_hash <> (SELECT state_hash FROM eth_blocks WHERE block_number = NEW.block_number - 1 AND imported_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'Parent state hash does not match the state hash of the previous block';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
 
 
 --
@@ -215,10 +230,14 @@ CREATE TABLE public.eth_blocks (
     blockhash character varying NOT NULL,
     parent_blockhash character varying NOT NULL,
     imported_at timestamp(6) without time zone,
+    state_hash character varying,
+    parent_state_hash character varying,
     is_genesis_block boolean NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_1c105acdac CHECK (((parent_blockhash)::text ~ '^0x[a-f0-9]{64}$'::text)),
+    CONSTRAINT chk_rails_319237323b CHECK (((state_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
+    CONSTRAINT chk_rails_7126b7c9d3 CHECK (((parent_state_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_7e9881ece2 CHECK (((blockhash)::text ~ '^0x[a-f0-9]{64}$'::text))
 );
 
@@ -264,10 +283,10 @@ CREATE TABLE public.eth_transactions (
     value numeric NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT chk_rails_51be5c1aa9 CHECK (((to_address IS NULL) OR ((to_address)::text ~ '^0x[a-f0-9]{40}$'::text))),
-    CONSTRAINT chk_rails_93b41d08e7 CHECK (((created_contract_address IS NULL) OR ((created_contract_address)::text ~ '^0x[a-f0-9]{40}$'::text))),
+    CONSTRAINT chk_rails_37ed5d6017 CHECK (((to_address)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_9cdbd3b1ad CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_a4d3f41974 CHECK (((from_address)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_d460e80110 CHECK (((created_contract_address)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT contract_to_check CHECK ((((created_contract_address IS NULL) AND (to_address IS NOT NULL)) OR ((created_contract_address IS NOT NULL) AND (to_address IS NULL)))),
     CONSTRAINT status_check CHECK ((((block_number <= 4370000) AND (status IS NULL)) OR ((block_number > 4370000) AND (status = 1))))
 );
@@ -585,6 +604,13 @@ CREATE UNIQUE INDEX idx_on_block_number_transaction_index_transfer_inde_fc9ee599
 
 
 --
+-- Name: idx_on_current_owner_previous_owner_7bb4bbf3cf; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_current_owner_previous_owner_7bb4bbf3cf ON public.ethscription_ownership_versions USING btree (current_owner, previous_owner);
+
+
+--
 -- Name: idx_on_ethscription_transaction_hash_block_number_t_a807d2b571; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -641,10 +667,31 @@ CREATE INDEX index_eth_blocks_on_imported_at ON public.eth_blocks USING btree (i
 
 
 --
+-- Name: index_eth_blocks_on_imported_at_and_block_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_eth_blocks_on_imported_at_and_block_number ON public.eth_blocks USING btree (imported_at, block_number);
+
+
+--
 -- Name: index_eth_blocks_on_parent_blockhash; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX index_eth_blocks_on_parent_blockhash ON public.eth_blocks USING btree (parent_blockhash);
+
+
+--
+-- Name: index_eth_blocks_on_parent_state_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_eth_blocks_on_parent_state_hash ON public.eth_blocks USING btree (parent_state_hash);
+
+
+--
+-- Name: index_eth_blocks_on_state_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_eth_blocks_on_state_hash ON public.eth_blocks USING btree (state_hash);
 
 
 --
@@ -669,10 +716,24 @@ CREATE UNIQUE INDEX index_eth_transactions_on_block_number_and_transaction_index
 
 
 --
+-- Name: index_eth_transactions_on_block_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_eth_transactions_on_block_timestamp ON public.eth_transactions USING btree (block_timestamp);
+
+
+--
 -- Name: index_eth_transactions_on_from_address; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_eth_transactions_on_from_address ON public.eth_transactions USING btree (from_address);
+
+
+--
+-- Name: index_eth_transactions_on_logs; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_eth_transactions_on_logs ON public.eth_transactions USING gin (logs);
 
 
 --
@@ -697,6 +758,27 @@ CREATE UNIQUE INDEX index_eth_transactions_on_transaction_hash ON public.eth_tra
 
 
 --
+-- Name: index_ethscription_ownership_versions_on_block_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_ownership_versions_on_block_number ON public.ethscription_ownership_versions USING btree (block_number);
+
+
+--
+-- Name: index_ethscription_ownership_versions_on_current_owner; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_ownership_versions_on_current_owner ON public.ethscription_ownership_versions USING btree (current_owner);
+
+
+--
+-- Name: index_ethscription_ownership_versions_on_previous_owner; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_ownership_versions_on_previous_owner ON public.ethscription_ownership_versions USING btree (previous_owner);
+
+
+--
 -- Name: index_ethscription_ownership_versions_on_transaction_hash; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -708,6 +790,13 @@ CREATE INDEX index_ethscription_ownership_versions_on_transaction_hash ON public
 --
 
 CREATE INDEX index_ethscription_transfers_on_block_number ON public.ethscription_transfers USING btree (block_number);
+
+
+--
+-- Name: index_ethscription_transfers_on_ethscription_transaction_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_transfers_on_ethscription_transaction_hash ON public.ethscription_transfers USING btree (ethscription_transaction_hash);
 
 
 --
@@ -781,6 +870,13 @@ CREATE INDEX index_ethscriptions_on_current_owner ON public.ethscriptions USING 
 
 
 --
+-- Name: index_ethscriptions_on_esip6; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscriptions_on_esip6 ON public.ethscriptions USING btree (esip6);
+
+
+--
 -- Name: index_ethscriptions_on_ethscription_number; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -848,6 +944,13 @@ CREATE TRIGGER check_block_imported_at_trigger BEFORE UPDATE OF imported_at ON p
 --
 
 CREATE TRIGGER trigger_check_block_order BEFORE INSERT ON public.eth_blocks FOR EACH ROW EXECUTE FUNCTION public.check_block_order();
+
+
+--
+-- Name: eth_blocks trigger_check_block_order_on_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trigger_check_block_order_on_update BEFORE UPDATE OF imported_at ON public.eth_blocks FOR EACH ROW WHEN ((new.imported_at IS NOT NULL)) EXECUTE FUNCTION public.check_block_order_on_update();
 
 
 --
@@ -950,7 +1053,6 @@ ALTER TABLE ONLY public.ethscription_ownership_versions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
-('20231219131956'),
 ('20231217190431'),
 ('20231216215348'),
 ('20231216213103'),

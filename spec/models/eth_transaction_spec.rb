@@ -88,7 +88,7 @@ RSpec.describe EthTransaction, type: :model do
           logs: [
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
               'data' => Eth::Abi.encode(['string'], ['data:,test-log']).unpack1('H*'),
@@ -97,7 +97,7 @@ RSpec.describe EthTransaction, type: :model do
             },
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
               'data' => Eth::Abi.encode(['string'], ['data:,test-log-2']).unpack1('H*'),
@@ -126,7 +126,7 @@ RSpec.describe EthTransaction, type: :model do
           logs: [
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
               'data' => Eth::Abi.encode(['string'], ['data:,test-log']).unpack1('H*'),
@@ -135,7 +135,7 @@ RSpec.describe EthTransaction, type: :model do
             },
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
               'data' => Eth::Abi.encode(['string'], ['data:,test-log']).unpack1('H*'),
@@ -163,7 +163,7 @@ RSpec.describe EthTransaction, type: :model do
           logs: [
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
               'data' => Eth::Abi.encode(['string'], ['invalid']).unpack1('H*'),
@@ -172,7 +172,7 @@ RSpec.describe EthTransaction, type: :model do
             },
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
               'data' => Eth::Abi.encode(['string'], ['data:,test-log']).unpack1('H*'),
@@ -201,7 +201,7 @@ RSpec.describe EthTransaction, type: :model do
           logs: [
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
               'data' => Eth::Abi.encode(['string'], ['data:,test1']).unpack1('H*'),
@@ -210,7 +210,7 @@ RSpec.describe EthTransaction, type: :model do
             },
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
               'data' => Eth::Abi.encode(['string'], ['data:,test2']).unpack1('H*'),
@@ -242,7 +242,7 @@ RSpec.describe EthTransaction, type: :model do
             },
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
               'data' => Eth::Abi.encode(['string'], ['data:,test']).unpack1('H*'),
@@ -268,7 +268,7 @@ RSpec.describe EthTransaction, type: :model do
           logs: [
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
               'data' => Eth::Abi.encode(['string'], ['data:,test']).unpack1('H*'),
@@ -301,7 +301,7 @@ RSpec.describe EthTransaction, type: :model do
             },
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
               'data' => Eth::Abi.encode(['string'], ['data:,test']).unpack1('H*'),
@@ -325,7 +325,7 @@ RSpec.describe EthTransaction, type: :model do
           logs: [
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
@@ -334,7 +334,7 @@ RSpec.describe EthTransaction, type: :model do
             },
             {
               'topics' => [
-                EthTransaction.contracts_create_ethscription_event_sig,
+                EthTransaction::CreateEthscriptionEventSig,
                 Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
               ],
               'data' => Eth::Abi.encode(['string'], ['data:,test-log-2']).unpack1('H*'),

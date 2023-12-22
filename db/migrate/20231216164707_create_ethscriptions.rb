@@ -7,16 +7,14 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
       t.bigint :block_timestamp, null: false
       t.bigint :event_log_index
       
-      t.bigint :ethscription_number#, null: false
+      t.bigint :ethscription_number, null: false
       t.string :creator, null: false
       t.string :initial_owner, null: false
       t.string :current_owner, null: false
       t.string :previous_owner, null: false
 
-      # t.boolean :valid_data_uri, null: false
       t.text :content_uri, null: false
       t.string :content_sha, null: false
-      # t.boolean :content_unique
       t.boolean :esip6, null: false
       t.string :mimetype, null: false
       t.string :media_type, null: false
@@ -35,20 +33,17 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
       t.index :creator
       t.index :current_owner
       t.index :ethscription_number, unique: true
-      # t.index [:content_unique, :valid_data_uri]
-      # t.index :content_unique, where: "(content_unique IS NOT NULL)"
       t.index :content_sha
       t.index :content_sha, unique: true, where: "(esip6 = false)",
         name: :index_ethscriptions_on_content_sha_unique
-      # t.index :valid_data_uri
       t.index :initial_owner
       t.index :media_type
       t.index :mime_subtype
       t.index :mimetype
       t.index :previous_owner
       t.index :transaction_index
+      t.index :esip6
       
-      # t.check_constraint "esip6 = true OR content_unique IS NOT NULL"
       t.check_constraint "content_sha ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "transaction_hash ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "creator ~ '^0x[a-f0-9]{40}$'"
@@ -65,27 +60,31 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
     reversible do |dir|
       dir.up do
         execute <<-SQL
-          CREATE OR REPLACE FUNCTION check_ethscription_order()
+          DROP TRIGGER IF EXISTS trigger_check_ethscription_order ON ethscriptions;
+          DROP FUNCTION IF EXISTS check_ethscription_order();
+
+          CREATE OR REPLACE FUNCTION check_ethscription_order_and_sequence()
           RETURNS TRIGGER AS $$
           BEGIN
             IF NEW.block_number < (SELECT MAX(block_number) FROM ethscriptions) OR
             (NEW.block_number = (SELECT MAX(block_number) FROM ethscriptions) AND NEW.transaction_index <= (SELECT MAX(transaction_index) FROM ethscriptions WHERE block_number = NEW.block_number)) THEN
               RAISE EXCEPTION 'Ethscriptions must be created in order';
             END IF;
+            NEW.ethscription_number := (SELECT COALESCE(MAX(ethscription_number), -1) + 1 FROM ethscriptions);
             RETURN NEW;
           END;
           $$ LANGUAGE plpgsql;
 
-          CREATE TRIGGER trigger_check_ethscription_order
+          CREATE TRIGGER trigger_check_ethscription_order_and_sequence
           BEFORE INSERT ON ethscriptions
-          FOR EACH ROW EXECUTE FUNCTION check_ethscription_order();
+          FOR EACH ROW EXECUTE FUNCTION check_ethscription_order_and_sequence();
         SQL
       end
 
       dir.down do
         execute <<-SQL
-          DROP TRIGGER IF EXISTS trigger_check_ethscription_order ON ethscriptions;
-          DROP FUNCTION IF EXISTS check_ethscription_order();
+          DROP TRIGGER IF EXISTS trigger_check_ethscription_order_and_sequence ON ethscriptions;
+          DROP FUNCTION IF EXISTS check_ethscription_order_and_sequence();
         SQL
       end
     end

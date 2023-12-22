@@ -1,9 +1,29 @@
 module EthscriptionTestHelper
+  def self.create_from_hash(hash)
+    resp = AlchemyClient.query_api(
+      method: 'eth_getTransactionByHash',
+      params: [hash]
+    )['result']
+    
+    resp2 = AlchemyClient.query_api(
+      method: 'eth_getTransactionReceipt',
+      params: [hash]
+    )['result']
+    
+    create_eth_transaction(
+      input: resp['input'],
+      to: resp['to'],
+      from: resp['from'],
+      logs: resp2['logs']
+    )
+  end
+  
   def self.create_eth_transaction(
     input:,
     from:,
     to:,
-    logs:
+    logs: [],
+    tx_hash: nil
   )
     existing = Ethscription.newest_first.first
     
@@ -12,8 +32,11 @@ module EthscriptionTestHelper
     transaction_index = existing&.transaction_index.to_i + 1
     overall_order_number = block_number * 1e8 + transaction_index
     
-    hex_input = input.bytes.map { |byte| byte.to_s(16).rjust(2, '0') }.join
-    hex_input = "0x" + hex_input
+    hex_input = if input.match?(/\A0x([a-f0-9]{2})+\z/i)
+      input.downcase
+    else
+      "0x" + input.bytes.map { |byte| byte.to_s(16).rjust(2, '0') }.join
+    end
     
     if EthBlock.exists?
       parent_block = EthBlock.order(block_number: :desc).first
@@ -33,7 +56,7 @@ module EthscriptionTestHelper
     tx = EthTransaction.create!(
       block_number: block_number,
       block_timestamp: eth_block.timestamp,
-      transaction_hash: "0x" + SecureRandom.hex(32),
+      transaction_hash: tx_hash || "0x" + SecureRandom.hex(32),
       from_address: from.downcase,
       to_address: to.downcase,
       transaction_index: transaction_index,
@@ -49,6 +72,7 @@ module EthscriptionTestHelper
     tx.process!
     
     eth_block.update!(imported_at: Time.current)
+    tx
   end
   
   def self.t

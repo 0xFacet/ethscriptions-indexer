@@ -7,7 +7,11 @@ class EthBlock < ApplicationRecord
     inverse_of: :eth_block
   has_many :ethscription_transfers, foreign_key: :block_number, primary_key: :block_number,
     inverse_of: :eth_block
+  has_many :ethscription_ownership_versions, foreign_key: :block_number, primary_key: :block_number,
+    inverse_of: :eth_block
   
+  before_validation :generate_attestation_hash, if: -> { imported_at.present? }
+    
   def self.genesis_blocks
     blocks = if ENV.fetch('ETHEREUM_NETWORK') == "eth-mainnet"
       [1608625, 3369985, 3981254, 5873780, 8205613, 9046950,
@@ -235,5 +239,47 @@ class EthBlock < ApplicationRecord
         ],
       )
     ).with_indifferent_access
+  end
+  
+  def generate_attestation_hash
+    hash = Digest::SHA256.new
+    
+    parent_state_hash = EthBlock.where(block_number: block_number - 1).
+      limit(1).pluck(:state_hash).first
+    
+    hash << (parent_state_hash || "NULL")
+    hash << hashable_attributes(self.class).map { |attr| send(attr) }.
+      map { |record| record.nil? ? 'NULL' : record }.join
+
+    associations_to_hash.each do |association|
+      hashable_attributes = quoted_hashable_attributes(association.klass)
+      records = association_scope(association).pluck(*hashable_attributes)
+
+      records.map! { |record| record.nil? ? 'NULL' : record }
+      hash << records.join
+    end
+
+    self.state_hash = "0x" + hash.hexdigest
+    self.parent_state_hash = parent_state_hash
+  end
+
+  def association_scope(association)
+    association.klass.oldest_first.where(block_number: block_number)
+  end
+
+  def associations_to_hash
+    self.class.reflect_on_all_associations(:has_many)
+  end
+
+  def hashable_attributes(klass)
+    klass.columns_hash.reject do |k, v|
+      v.type == :datetime || ['id'].include?(k)
+    end.keys.sort
+  end
+
+  def quoted_hashable_attributes(klass)
+    hashable_attributes(klass).map do |attr|
+      Arel.sql("encode(digest(#{klass.connection.quote_column_name(attr)}::text, 'sha256'), 'hex')")
+    end
   end
 end

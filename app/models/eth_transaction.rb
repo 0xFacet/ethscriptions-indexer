@@ -1,14 +1,26 @@
 
 class EthTransaction < ApplicationRecord
   belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
-    inverse_of: :eth_transaction
+    inverse_of: :eth_block
   has_one :ethscription, foreign_key: :transaction_hash, primary_key: :transaction_hash,
-    inverse_of: :eth_transaction, dependent: :destroy
-
+    inverse_of: :eth_transaction
   has_many :ethscription_transfers, foreign_key: :transaction_hash,
-    primary_key: :transaction_hash, dependent: :destroy, inverse_of: :eth_transaction
+    primary_key: :transaction_hash, inverse_of: :eth_transaction
+  has_many :ethscription_ownership_versions, foreign_key: :transaction_hash,
+    primary_key: :transaction_hash, inverse_of: :eth_transaction
 
   attr_accessor :transfer_index
+  
+  scope :newest_first, -> { order(block_number: :desc, transaction_index: :desc) }
+  scope :oldest_first, -> { order(block_number: :asc, transaction_index: :asc) }
+  
+  def self.event_signature(event_name)
+    "0x" + Digest::Keccak256.hexdigest(event_name)
+  end
+  
+  CreateEthscriptionEventSig = event_signature("ethscriptions_protocol_CreateEthscription(address,string)")
+  Esip2EventSig = event_signature("ethscriptions_protocol_TransferEthscriptionForPreviousOwner(address,address,bytes32)")
+  Esip1EventSig = event_signature("ethscriptions_protocol_TransferEthscription(address,bytes32)")
   
   def possibly_relevant?
     status != 0 &&
@@ -104,7 +116,7 @@ class EthTransaction < ApplicationRecord
     return [] unless EthTransaction.esip3_enabled?(block_number)
     
     ordered_events.select do |log|
-      EthTransaction.contracts_create_ethscription_event_sig == log['topics'].first
+      CreateEthscriptionEventSig == log['topics'].first
     end
   end
   
@@ -143,16 +155,17 @@ class EthTransaction < ApplicationRecord
       topics = log['topics']
       event_type = topics.first
       
-      if event_type == EthTransaction.esip1_transfer_event_signature
+      if event_type == Esip1EventSig
         begin
-          event_to = Eth::Abi.decode(['address'], topics.third).first
+          event_to = Eth::Abi.decode(['address'], topics.second).first
+          tx_hash = Eth::Util.bin_to_prefixed_hex(
+            Eth::Abi.decode(['bytes32'], topics.third).first
+          )
         rescue Eth::Abi::DecodingError
           next
         end
       
-        next unless valid_bytes32?(topics.third)
-
-        target_ethscription = Ethscription.find_by(transaction_hash: topics.third)
+        target_ethscription = Ethscription.find_by(transaction_hash: tx_hash)
   
         if target_ethscription.present?
           ethscription_transfers.create!(
@@ -165,17 +178,18 @@ class EthTransaction < ApplicationRecord
             }.merge(transfer_attrs)
           )
         end
-      elsif event_type == EthTransaction.esip2_transfer_event_signature
+      elsif event_type == Esip2EventSig
         begin
           event_previous_owner = Eth::Abi.decode(['address'], topics.second).first
           event_to = Eth::Abi.decode(['address'], topics.third).first
+          tx_hash = Eth::Util.bin_to_prefixed_hex(
+            Eth::Abi.decode(['bytes32'], topics.fourth).first
+          )
         rescue Eth::Abi::DecodingError
           next
         end
         
-        next unless valid_bytes32?(topics.fourth)
-        
-        target_ethscription = Ethscription.find_by(transaction_hash: topics.fourth)
+        target_ethscription = Ethscription.find_by(transaction_hash: tx_hash)
   
         if target_ethscription.present?
           ethscription_transfers.create!(
@@ -277,40 +291,11 @@ class EthTransaction < ApplicationRecord
     block_number >= 17672762
   end
   
-  def valid_bytes32?(value)
-    /\A0x[0-9a-f]{64}\z/i.match?(value.to_s)
-  end
-  
   def self.contract_transfer_event_signatures(block_number)
     [].tap do |res|
-      res << esip1_transfer_event_signature if esip1_enabled?(block_number)
-      res << esip2_transfer_event_signature if esip2_enabled?(block_number)
+      res << Esip1EventSig if esip1_enabled?(block_number)
+      res << Esip2EventSig if esip2_enabled?(block_number)
     end
-  end
-  
-  class << self
-    extend Memoist
-    
-    def contracts_create_ethscription_event_sig
-      "0x" + Digest::Keccak256.hexdigest(
-        "ethscriptions_protocol_CreateEthscription(address,string)"
-      )
-    end
-    memoize :contracts_create_ethscription_event_sig
-    
-    def esip2_transfer_event_signature
-      "0x" + Digest::Keccak256.hexdigest(
-        "ethscriptions_protocol_TransferEthscriptionForPreviousOwner(address,address,bytes32)"
-      )
-    end
-    memoize :esip2_transfer_event_signature
-    
-    def esip1_transfer_event_signature
-      "0x" + Digest::Keccak256.hexdigest(
-        "ethscriptions_protocol_TransferEthscription(address,bytes32)"
-      )
-    end
-    memoize :esip1_transfer_event_signature
   end
   
   def self.prune_transactions

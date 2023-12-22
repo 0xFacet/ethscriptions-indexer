@@ -1,6 +1,6 @@
 class EthscriptionOwnershipVersion < ApplicationRecord
-  belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
-    inverse_of: :ethscription_ownership_versions
+  belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number,
+    optional: true, inverse_of: :ethscription_ownership_versions
   belongs_to :eth_transaction,
     foreign_key: :transaction_hash,
     primary_key: :transaction_hash, optional: true,
@@ -14,5 +14,11 @@ class EthscriptionOwnershipVersion < ApplicationRecord
     block_number: :desc,
     transaction_index: :desc,
     transfer_index: :desc
+  )}
+  
+  scope :oldest_first, -> { order(
+    block_number: :asc,
+    transaction_index: :asc,
+    transfer_index: :asc
   )}
 end

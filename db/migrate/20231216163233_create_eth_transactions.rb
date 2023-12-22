@@ -18,10 +18,12 @@ class CreateEthTransactions < ActiveRecord::Migration[7.1]
 
       t.index [:block_number, :transaction_index], unique: true
       t.index :block_number
+      t.index :block_timestamp
       t.index :from_address
       t.index :status
       t.index :to_address
       t.index :transaction_hash, unique: true
+      t.index :logs, using: :gin
 
       t.check_constraint "block_number <= 4370000 AND status IS NULL OR block_number > 4370000 AND status = 1", name: "status_check"
       t.check_constraint "created_contract_address IS NULL AND to_address IS NOT NULL OR
@@ -29,8 +31,8 @@ class CreateEthTransactions < ActiveRecord::Migration[7.1]
         
       t.check_constraint "transaction_hash ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "from_address ~ '^0x[a-f0-9]{40}$'"
-      t.check_constraint "to_address IS NULL OR to_address ~ '^0x[a-f0-9]{40}$'"
-      t.check_constraint "created_contract_address IS NULL OR created_contract_address ~ '^0x[a-f0-9]{40}$'"
+      t.check_constraint "to_address ~ '^0x[a-f0-9]{40}$'"
+      t.check_constraint "created_contract_address ~ '^0x[a-f0-9]{40}$'"
 
       t.foreign_key :eth_blocks, column: :block_number, primary_key: :block_number, on_delete: :cascade
       

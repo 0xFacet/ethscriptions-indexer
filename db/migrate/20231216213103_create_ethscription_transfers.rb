@@ -12,6 +12,7 @@ class CreateEthscriptionTransfers < ActiveRecord::Migration[7.1]
       t.bigint :transaction_index, null: false
       t.string :enforced_previous_owner
 
+      t.index :ethscription_transaction_hash
       t.index :block_number
       t.index :from_address
       t.index :to_address

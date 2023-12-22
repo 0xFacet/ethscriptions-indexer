@@ -46,7 +46,7 @@ class Ethscription < ApplicationRecord
   end
   
   def content_sha
-    Digest::SHA256.hexdigest(content_uri)
+    "0x" + Digest::SHA256.hexdigest(content_uri)
   end
 
   def esip6

@@ -18,10 +18,12 @@ class CreateEthTransactions < ActiveRecord::Migration[7.1]
 
       t.index [:block_number, :transaction_index], unique: true
       t.index :block_number
+      t.index :block_timestamp
       t.index :from_address
       t.index :status
       t.index :to_address
       t.index :transaction_hash, unique: true
+      t.index :logs, using: :gin
 
       t.check_constraint "block_number <= 4370000 AND status IS NULL OR block_number > 4370000 AND status = 1", name: "status_check"
       t.check_constraint "created_contract_address IS NULL AND to_address IS NOT NULL OR

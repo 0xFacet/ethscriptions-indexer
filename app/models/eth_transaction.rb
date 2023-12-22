@@ -3,7 +3,7 @@ class EthTransaction < ApplicationRecord
   belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
     inverse_of: :eth_block
   has_one :ethscription, foreign_key: :transaction_hash, primary_key: :transaction_hash,
-    inverse_of: :eth_transaction, inverse_of: :eth_transaction
+    inverse_of: :eth_transaction
   has_many :ethscription_transfers, foreign_key: :transaction_hash,
     primary_key: :transaction_hash, inverse_of: :eth_transaction
   has_many :ethscription_ownership_versions, foreign_key: :transaction_hash,
@@ -157,14 +157,15 @@ class EthTransaction < ApplicationRecord
       
       if event_type == Esip1EventSig
         begin
-          event_to = Eth::Abi.decode(['address'], topics.third).first
+          event_to = Eth::Abi.decode(['address'], topics.second).first
+          tx_hash = Eth::Util.bin_to_prefixed_hex(
+            Eth::Abi.decode(['bytes32'], topics.third).first
+          )
         rescue Eth::Abi::DecodingError
           next
         end
       
-        next unless valid_bytes32?(topics.third)
-
-        target_ethscription = Ethscription.find_by(transaction_hash: topics.third)
+        target_ethscription = Ethscription.find_by(transaction_hash: tx_hash)
   
         if target_ethscription.present?
           ethscription_transfers.create!(
@@ -181,13 +182,14 @@ class EthTransaction < ApplicationRecord
         begin
           event_previous_owner = Eth::Abi.decode(['address'], topics.second).first
           event_to = Eth::Abi.decode(['address'], topics.third).first
+          tx_hash = Eth::Util.bin_to_prefixed_hex(
+            Eth::Abi.decode(['bytes32'], topics.fourth).first
+          )
         rescue Eth::Abi::DecodingError
           next
         end
         
-        next unless valid_bytes32?(topics.fourth)
-        
-        target_ethscription = Ethscription.find_by(transaction_hash: topics.fourth)
+        target_ethscription = Ethscription.find_by(transaction_hash: tx_hash)
   
         if target_ethscription.present?
           ethscription_transfers.create!(
@@ -287,10 +289,6 @@ class EthTransaction < ApplicationRecord
   def self.esip1_enabled?(block_number)
     ENV['ETHEREUM_NETWORK'] == "eth-goerli" ||
     block_number >= 17672762
-  end
-  
-  def valid_bytes32?(value)
-    /\A0x[0-9a-f]{64}\z/i.match?(value.to_s)
   end
   
   def self.contract_transfer_event_signatures(block_number)

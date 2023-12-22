@@ -11,6 +11,9 @@ class CreateEthscriptionOwnershipVersions < ActiveRecord::Migration[7.1]
       t.string :current_owner, null: false
       t.string :previous_owner, null: false
       
+      t.index :current_owner
+      t.index :previous_owner
+      t.index [:current_owner, :previous_owner]
       t.index :ethscription_transaction_hash
       t.index :transaction_hash
       t.index :block_number

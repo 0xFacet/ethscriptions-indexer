@@ -64,7 +64,7 @@ CREATE FUNCTION public.check_block_order() RETURNS trigger
               NEW.parent_blockhash <> (SELECT blockhash FROM eth_blocks WHERE block_number = NEW.block_number - 1) THEN
               RAISE EXCEPTION 'Parent block hash does not match the parent''s block hash';
             END IF;
-            
+
             RETURN NEW;
           END;
           $$;
@@ -604,6 +604,13 @@ CREATE UNIQUE INDEX idx_on_block_number_transaction_index_transfer_inde_fc9ee599
 
 
 --
+-- Name: idx_on_current_owner_previous_owner_7bb4bbf3cf; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_current_owner_previous_owner_7bb4bbf3cf ON public.ethscription_ownership_versions USING btree (current_owner, previous_owner);
+
+
+--
 -- Name: idx_on_ethscription_transaction_hash_block_number_t_a807d2b571; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -674,6 +681,20 @@ CREATE UNIQUE INDEX index_eth_blocks_on_parent_blockhash ON public.eth_blocks US
 
 
 --
+-- Name: index_eth_blocks_on_parent_state_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_eth_blocks_on_parent_state_hash ON public.eth_blocks USING btree (parent_state_hash);
+
+
+--
+-- Name: index_eth_blocks_on_state_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_eth_blocks_on_state_hash ON public.eth_blocks USING btree (state_hash);
+
+
+--
 -- Name: index_eth_blocks_on_timestamp; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -695,10 +716,24 @@ CREATE UNIQUE INDEX index_eth_transactions_on_block_number_and_transaction_index
 
 
 --
+-- Name: index_eth_transactions_on_block_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_eth_transactions_on_block_timestamp ON public.eth_transactions USING btree (block_timestamp);
+
+
+--
 -- Name: index_eth_transactions_on_from_address; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_eth_transactions_on_from_address ON public.eth_transactions USING btree (from_address);
+
+
+--
+-- Name: index_eth_transactions_on_logs; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_eth_transactions_on_logs ON public.eth_transactions USING gin (logs);
 
 
 --
@@ -730,6 +765,20 @@ CREATE INDEX index_ethscription_ownership_versions_on_block_number ON public.eth
 
 
 --
+-- Name: index_ethscription_ownership_versions_on_current_owner; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_ownership_versions_on_current_owner ON public.ethscription_ownership_versions USING btree (current_owner);
+
+
+--
+-- Name: index_ethscription_ownership_versions_on_previous_owner; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_ownership_versions_on_previous_owner ON public.ethscription_ownership_versions USING btree (previous_owner);
+
+
+--
 -- Name: index_ethscription_ownership_versions_on_transaction_hash; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -741,6 +790,13 @@ CREATE INDEX index_ethscription_ownership_versions_on_transaction_hash ON public
 --
 
 CREATE INDEX index_ethscription_transfers_on_block_number ON public.ethscription_transfers USING btree (block_number);
+
+
+--
+-- Name: index_ethscription_transfers_on_ethscription_transaction_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_transfers_on_ethscription_transaction_hash ON public.ethscription_transfers USING btree (ethscription_transaction_hash);
 
 
 --

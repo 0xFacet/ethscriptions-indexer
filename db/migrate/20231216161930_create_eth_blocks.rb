@@ -18,6 +18,8 @@ class CreateEthBlocks < ActiveRecord::Migration[7.1]
       t.index :imported_at
       t.index [:imported_at, :block_number]
       t.index :parent_blockhash, unique: true
+      t.index :state_hash, unique: true
+      t.index :parent_state_hash, unique: true
       t.index :timestamp
     
       t.check_constraint "blockhash ~ '^0x[a-f0-9]{64}$'"

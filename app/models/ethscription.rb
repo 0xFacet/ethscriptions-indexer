@@ -92,46 +92,6 @@ class Ethscription < ApplicationRecord
     )
   end
   
-  def self.set_ethscription_numbers_no_duplicate_jobs(since = nil)
-    return if Delayed::Job.where("handler LIKE ?", "%set_ethscription_numbers%").exists?
-          
-    Ethscription.delay(priority: 1).set_ethscription_numbers(since)
-  end
-  
-  def self.set_ethscription_numbers(since = nil)
-    ActiveRecord::Base.transaction do
-      range_condition = since ? "created_at > ?" : "1=1"
-      
-      Ethscription.where(range_condition, since).update_all(ethscription_number: nil)
-      
-      ActiveRecord::Base.connection.execute <<-SQL
-        WITH max_num AS (
-          SELECT COALESCE(MAX(ethscription_number), 0) AS max_val FROM ethscriptions
-        ), cte AS (
-          SELECT 
-            id, 
-            ROW_NUMBER() OVER (
-              ORDER BY block_number, transaction_index
-            ) - 1 + max_val AS new_ethscription_number
-          FROM 
-            ethscriptions, max_num
-          WHERE
-          ethscription_number IS NULL
-        )
-        UPDATE
-          ethscriptions
-        SET
-          ethscription_number = cte.new_ethscription_number
-        FROM
-          cte
-        WHERE
-          ethscriptions.id = cte.id;
-      SQL
-      
-      Rails.cache.clear
-    end
-  end
-  
   def as_json(options = {})
     super(options.merge(include: :ethscription_transfers))
   end

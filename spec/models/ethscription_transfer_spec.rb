@@ -43,6 +43,33 @@ RSpec.describe EthscriptionTransfer, type: :model do
       expect(ethscription.current_owner).to eq("0x104a84b87e1e7054c48b63077b8b7ccd62de9260")
     end
     
+    it 'handles chain reorgs' do
+      tx = EthscriptionTestHelper.create_eth_transaction(
+        input: 'data:,{"p":"erc-20","op":"mint","tick":"gwei","id":"6359","amt":"1000"}',
+        from: "0x9C80cb4b2c8311C3070f62C9e9B4f40C43291E8d",
+        to: "0x9C80cb4b2c8311C3070f62C9e9B4f40C43291E8d",
+        tx_hash: '0x6a8f9706637f16c9a93a7bac072bbb291530d9d59f1eba43e28fb5bc2cf12a22'
+      )
+      
+      eths = tx.ethscription
+      
+      current_owner = eths.current_owner
+      previous_owner = eths.previous_owner
+      
+      second_tx = EthscriptionTestHelper.create_eth_transaction(
+        input: '0x6a8f9706637f16c9a93a7bac072bbb291530d9d59f1eba43e28fb5bc2cf12a22',
+        from: "0x9C80cb4b2c8311C3070f62C9e9B4f40C43291E8d",
+        to: "0x36442bda6780c95113d7c38dd17cdd94be611de8",
+      )
+      
+      EthBlock.where("block_number >= ?", second_tx.block_number).delete_all
+      
+      eths.reload
+      
+      expect(eths.current_owner).to eq(current_owner)
+      expect(eths.previous_owner).to eq(previous_owner)
+    end
+    
     it 'handles invalid transfers' do
       tx = EthscriptionTestHelper.create_eth_transaction(
         input: 'data:,{"p":"erc-20","op":"mint","tick":"gwei","id":"6359","amt":"1000"}',

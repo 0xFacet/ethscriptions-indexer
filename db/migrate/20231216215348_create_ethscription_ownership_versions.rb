@@ -51,7 +51,8 @@ class CreateEthscriptionOwnershipVersions < ActiveRecord::Migration[7.1]
 
               UPDATE ethscriptions
               SET current_owner = latest_ownership_version.current_owner,
-                  previous_owner = latest_ownership_version.previous_owner
+                  previous_owner = latest_ownership_version.previous_owner,
+                  updated_at = NOW()
               WHERE transaction_hash = NEW.ethscription_transaction_hash;
             ELSIF TG_OP = 'DELETE' THEN
               SELECT INTO latest_ownership_version *
@@ -63,7 +64,8 @@ class CreateEthscriptionOwnershipVersions < ActiveRecord::Migration[7.1]
 
               UPDATE ethscriptions
               SET current_owner = latest_ownership_version.current_owner,
-                  previous_owner = latest_ownership_version.previous_owner
+                  previous_owner = latest_ownership_version.previous_owner,
+                  updated_at = NOW()
               WHERE transaction_hash = OLD.ethscription_transaction_hash;
             END IF;
 

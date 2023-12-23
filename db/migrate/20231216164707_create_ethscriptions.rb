@@ -43,6 +43,8 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
       t.index :previous_owner
       t.index :transaction_index
       t.index :esip6
+      t.index :updated_at
+      t.index :created_at
       
       t.check_constraint "content_sha ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "transaction_hash ~ '^0x[a-f0-9]{64}$'"

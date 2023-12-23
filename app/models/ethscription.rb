@@ -132,6 +132,10 @@ class Ethscription < ApplicationRecord
     end
   end
   
+  def as_json(options = {})
+    super(options.merge(include: :ethscription_transfers))
+  end
+  
   private
   
   def set_derived_attributes

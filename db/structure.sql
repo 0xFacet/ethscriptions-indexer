@@ -660,6 +660,13 @@ CREATE UNIQUE INDEX index_eth_blocks_on_blockhash ON public.eth_blocks USING btr
 
 
 --
+-- Name: index_eth_blocks_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_eth_blocks_on_created_at ON public.eth_blocks USING btree (created_at);
+
+
+--
 -- Name: index_eth_blocks_on_imported_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -702,6 +709,13 @@ CREATE INDEX index_eth_blocks_on_timestamp ON public.eth_blocks USING btree ("ti
 
 
 --
+-- Name: index_eth_blocks_on_updated_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_eth_blocks_on_updated_at ON public.eth_blocks USING btree (updated_at);
+
+
+--
 -- Name: index_eth_transactions_on_block_number; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -720,6 +734,13 @@ CREATE UNIQUE INDEX index_eth_transactions_on_block_number_and_transaction_index
 --
 
 CREATE INDEX index_eth_transactions_on_block_timestamp ON public.eth_transactions USING btree (block_timestamp);
+
+
+--
+-- Name: index_eth_transactions_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_eth_transactions_on_created_at ON public.eth_transactions USING btree (created_at);
 
 
 --
@@ -758,10 +779,24 @@ CREATE UNIQUE INDEX index_eth_transactions_on_transaction_hash ON public.eth_tra
 
 
 --
+-- Name: index_eth_transactions_on_updated_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_eth_transactions_on_updated_at ON public.eth_transactions USING btree (updated_at);
+
+
+--
 -- Name: index_ethscription_ownership_versions_on_block_number; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_ethscription_ownership_versions_on_block_number ON public.ethscription_ownership_versions USING btree (block_number);
+
+
+--
+-- Name: index_ethscription_ownership_versions_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_ownership_versions_on_created_at ON public.ethscription_ownership_versions USING btree (created_at);
 
 
 --
@@ -786,10 +821,24 @@ CREATE INDEX index_ethscription_ownership_versions_on_transaction_hash ON public
 
 
 --
+-- Name: index_ethscription_ownership_versions_on_updated_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_ownership_versions_on_updated_at ON public.ethscription_ownership_versions USING btree (updated_at);
+
+
+--
 -- Name: index_ethscription_transfers_on_block_number; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_ethscription_transfers_on_block_number ON public.ethscription_transfers USING btree (block_number);
+
+
+--
+-- Name: index_ethscription_transfers_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_transfers_on_created_at ON public.ethscription_transfers USING btree (created_at);
 
 
 --
@@ -818,6 +867,13 @@ CREATE INDEX index_ethscription_transfers_on_to_address ON public.ethscription_t
 --
 
 CREATE INDEX index_ethscription_transfers_on_transaction_hash ON public.ethscription_transfers USING btree (transaction_hash);
+
+
+--
+-- Name: index_ethscription_transfers_on_updated_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_transfers_on_updated_at ON public.ethscription_transfers USING btree (updated_at);
 
 
 --
@@ -853,6 +909,13 @@ CREATE INDEX index_ethscriptions_on_content_sha ON public.ethscriptions USING bt
 --
 
 CREATE UNIQUE INDEX index_ethscriptions_on_content_sha_unique ON public.ethscriptions USING btree (content_sha) WHERE (esip6 = false);
+
+
+--
+-- Name: index_ethscriptions_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscriptions_on_created_at ON public.ethscriptions USING btree (created_at);
 
 
 --
@@ -930,6 +993,13 @@ CREATE UNIQUE INDEX index_ethscriptions_on_transaction_hash ON public.ethscripti
 --
 
 CREATE INDEX index_ethscriptions_on_transaction_index ON public.ethscriptions USING btree (transaction_index);
+
+
+--
+-- Name: index_ethscriptions_on_updated_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscriptions_on_updated_at ON public.ethscriptions USING btree (updated_at);
 
 
 --

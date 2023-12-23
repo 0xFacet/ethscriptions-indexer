@@ -1,7 +1,7 @@
 
 class EthTransaction < ApplicationRecord
   belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
-    inverse_of: :eth_block
+    inverse_of: :eth_transactions
   has_one :ethscription, foreign_key: :transaction_hash, primary_key: :transaction_hash,
     inverse_of: :eth_transaction
   has_many :ethscription_transfers, foreign_key: :transaction_hash,

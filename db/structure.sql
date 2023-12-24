@@ -183,6 +183,85 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: collection_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.collection_items (
+    id bigint NOT NULL,
+    collection_id bigint NOT NULL,
+    ethscription_transaction_hash character varying NOT NULL,
+    item_attributes jsonb DEFAULT '{}'::jsonb NOT NULL,
+    name character varying,
+    description character varying,
+    external_url character varying,
+    background_color character varying,
+    item_index integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: collection_items_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.collection_items_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: collection_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.collection_items_id_seq OWNED BY public.collection_items.id;
+
+
+--
+-- Name: collections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.collections (
+    id bigint NOT NULL,
+    name character varying NOT NULL,
+    slug character varying NOT NULL,
+    logo_image_uri character varying,
+    banner_image_uri character varying,
+    total_supply integer,
+    description text,
+    twitter_link character varying,
+    discord_link character varying,
+    website_link character varying,
+    background_color character varying,
+    stats jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: collections_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.collections_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: collections_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.collections_id_seq OWNED BY public.collections.id;
+
+
+--
 -- Name: delayed_jobs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -473,6 +552,20 @@ CREATE TABLE public.schema_migrations (
 
 
 --
+-- Name: collection_items id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.collection_items ALTER COLUMN id SET DEFAULT nextval('public.collection_items_id_seq'::regclass);
+
+
+--
+-- Name: collections id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.collections ALTER COLUMN id SET DEFAULT nextval('public.collections_id_seq'::regclass);
+
+
+--
 -- Name: delayed_jobs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -520,6 +613,22 @@ ALTER TABLE ONLY public.ethscriptions ALTER COLUMN id SET DEFAULT nextval('publi
 
 ALTER TABLE ONLY public.ar_internal_metadata
     ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: collection_items collection_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.collection_items
+    ADD CONSTRAINT collection_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: collections collections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.collections
+    ADD CONSTRAINT collections_pkey PRIMARY KEY (id);
 
 
 --
@@ -614,6 +723,13 @@ CREATE UNIQUE INDEX idx_on_block_number_transaction_index_transfer_inde_fc9ee599
 
 
 --
+-- Name: idx_on_collection_id_ethscription_transaction_hash_52abc11b83; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_on_collection_id_ethscription_transaction_hash_52abc11b83 ON public.collection_items USING btree (collection_id, ethscription_transaction_hash);
+
+
+--
 -- Name: idx_on_current_owner_previous_owner_7bb4bbf3cf; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -653,6 +769,48 @@ CREATE UNIQUE INDEX idx_on_transaction_hash_transfer_index_4389678e0a ON public.
 --
 
 CREATE UNIQUE INDEX idx_on_transaction_hash_transfer_index_b79931daa1 ON public.ethscription_ownership_versions USING btree (transaction_hash, transfer_index);
+
+
+--
+-- Name: index_collection_items_on_collection_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_collection_items_on_collection_id ON public.collection_items USING btree (collection_id);
+
+
+--
+-- Name: index_collection_items_on_ethscription_transaction_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_collection_items_on_ethscription_transaction_hash ON public.collection_items USING btree (ethscription_transaction_hash);
+
+
+--
+-- Name: index_collection_items_on_item_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_collection_items_on_item_index ON public.collection_items USING btree (item_index);
+
+
+--
+-- Name: index_collection_items_on_item_index_and_collection_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_collection_items_on_item_index_and_collection_id ON public.collection_items USING btree (item_index, collection_id);
+
+
+--
+-- Name: index_collections_on_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_collections_on_name ON public.collections USING btree (name);
+
+
+--
+-- Name: index_collections_on_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_collections_on_slug ON public.collections USING btree (slug);
 
 
 --
@@ -1145,11 +1303,27 @@ ALTER TABLE ONLY public.ethscription_ownership_versions
 
 
 --
+-- Name: collection_items fk_rails_b1a778644b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.collection_items
+    ADD CONSTRAINT fk_rails_b1a778644b FOREIGN KEY (collection_id) REFERENCES public.collections(id) ON DELETE CASCADE;
+
+
+--
 -- Name: ethscription_transfers fk_rails_b68511af4b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ethscription_transfers
     ADD CONSTRAINT fk_rails_b68511af4b FOREIGN KEY (block_number) REFERENCES public.eth_blocks(block_number) ON DELETE CASCADE;
+
+
+--
+-- Name: collection_items fk_rails_c8e69a7756; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.collection_items
+    ADD CONSTRAINT fk_rails_c8e69a7756 FOREIGN KEY (ethscription_transaction_hash) REFERENCES public.ethscriptions(transaction_hash);
 
 
 --
@@ -1175,6 +1349,8 @@ ALTER TABLE ONLY public.ethscription_ownership_versions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20231224221330'),
+('20231224221205'),
 ('20231217190431'),
 ('20231216215348'),
 ('20231216213103'),

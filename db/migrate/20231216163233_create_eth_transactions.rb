@@ -4,6 +4,7 @@ class CreateEthTransactions < ActiveRecord::Migration[7.1]
       t.string :transaction_hash, null: false
       t.bigint :block_number, null: false
       t.bigint :block_timestamp, null: false
+      t.string :block_blockhash, null: false
       t.string :from_address, null: false
       t.string :to_address
       t.text :input, null: false
@@ -19,6 +20,7 @@ class CreateEthTransactions < ActiveRecord::Migration[7.1]
       t.index [:block_number, :transaction_index], unique: true
       t.index :block_number
       t.index :block_timestamp
+      t.index :block_blockhash
       t.index :from_address
       t.index :status
       t.index :to_address
@@ -32,6 +34,7 @@ class CreateEthTransactions < ActiveRecord::Migration[7.1]
         created_contract_address IS NOT NULL AND to_address IS NULL", name: "contract_to_check"
         
       t.check_constraint "transaction_hash ~ '^0x[a-f0-9]{64}$'"
+      t.check_constraint "block_blockhash ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "from_address ~ '^0x[a-f0-9]{40}$'"
       t.check_constraint "to_address ~ '^0x[a-f0-9]{40}$'"
       t.check_constraint "created_contract_address ~ '^0x[a-f0-9]{40}$'"

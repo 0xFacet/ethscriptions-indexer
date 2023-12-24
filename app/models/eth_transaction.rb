@@ -46,6 +46,7 @@ class EthTransaction < ApplicationRecord
       transaction_hash: transaction_hash,
       block_number: block_number,
       block_timestamp: block_timestamp,
+      block_blockhash: block_blockhash,
       transaction_index: transaction_index,
       gas_price: gas_price,
       gas_used: gas_used,
@@ -122,8 +123,10 @@ class EthTransaction < ApplicationRecord
   
   def transfer_attrs
     {
+      eth_transaction: self,
       block_number: block_number,
       block_timestamp: block_timestamp,
+      block_blockhash: block_blockhash,
       transaction_index: transaction_index,
     }
   end
@@ -138,15 +141,15 @@ class EthTransaction < ApplicationRecord
       matching_ethscriptions.detect { |e| e.transaction_hash == hash }
     end.compact
   
-    sorted_ethscriptions.each_with_index do |ethscription, index|
-      ethscription_transfers.create!(
-        {
-          ethscription_transaction_hash: ethscription.transaction_hash,
-          from_address: from_address,
-          to_address: to_address,
-          transfer_index: transfer_index,
-        }.merge(transfer_attrs)
-      )
+    sorted_ethscriptions.each do |ethscription|
+      potentially_valid = EthscriptionTransfer.new({
+        ethscription: ethscription,
+        from_address: from_address,
+        to_address: to_address,
+        transfer_index: transfer_index,
+      }.merge(transfer_attrs))
+      
+      potentially_valid.create_if_valid!
     end
   end
   
@@ -168,15 +171,15 @@ class EthTransaction < ApplicationRecord
         target_ethscription = Ethscription.find_by(transaction_hash: tx_hash)
   
         if target_ethscription.present?
-          ethscription_transfers.create!(
-            {
-              ethscription_transaction_hash: target_ethscription.transaction_hash,
-              from_address: log['address'],
-              to_address: event_to,
-              event_log_index: log['logIndex'].to_i(16),
-              transfer_index: transfer_index,
-            }.merge(transfer_attrs)
-          )
+          potentially_valid = EthscriptionTransfer.new({
+            ethscription: target_ethscription,
+            from_address: log['address'],
+            to_address: event_to,
+            event_log_index: log['logIndex'].to_i(16),
+            transfer_index: transfer_index,
+          }.merge(transfer_attrs))
+          
+          potentially_valid.create_if_valid!
         end
       elsif event_type == Esip2EventSig
         begin
@@ -192,16 +195,16 @@ class EthTransaction < ApplicationRecord
         target_ethscription = Ethscription.find_by(transaction_hash: tx_hash)
   
         if target_ethscription.present?
-          ethscription_transfers.create!(
-            {
-              ethscription_transaction_hash: target_ethscription.transaction_hash,
-              from_address: log['address'],
-              to_address: event_to,
-              event_log_index: log['logIndex'].to_i(16),
-              transfer_index: transfer_index,
-              enforced_previous_owner: event_previous_owner,
-            }.merge(transfer_attrs)
-          )
+          potentially_valid = EthscriptionTransfer.new({
+            ethscription: target_ethscription,
+            from_address: log['address'],
+            to_address: event_to,
+            event_log_index: log['logIndex'].to_i(16),
+            transfer_index: transfer_index,
+            enforced_previous_owner: event_previous_owner,
+          }.merge(transfer_attrs))
+          
+          potentially_valid.create_if_valid!
         end
       end
     end
@@ -237,24 +240,6 @@ class EthTransaction < ApplicationRecord
   
   def input_no_prefix
     input.gsub(/\A0x/, '')
-  end
-  
-  def essential_attributes
-    attributes.slice(
-      "transaction_hash",
-      "block_number",
-      "from_address",
-      "to_address",
-      "input",
-      "status",
-      "logs",
-      "created_contract_address",
-      "transaction_index",
-      "gas_price",
-      "gas_used",
-      "transaction_fee",
-      "value"
-    )
   end
   
   def self.hex_to_utf8(hex_string)
@@ -298,8 +283,8 @@ class EthTransaction < ApplicationRecord
     end
   end
   
-  def self.prune_transactions
-    EthTransaction
+  def self.prune_transactions(block_number)
+    EthTransaction.where(block_number: block_number)
       .where.not(transaction_hash: Ethscription.select(:transaction_hash))
       .where.not(transaction_hash: EthscriptionTransfer.select(:transaction_hash))
       .delete_all

@@ -28,19 +28,23 @@ class EthscriptionTransfer < ApplicationRecord
     eth_transaction.transfer_index += 1
   end
   
+  def create_if_valid!
+    raise "Already created" if persisted?
+    save! if is_valid_transfer?
+  end
+  
   def create_ownership_version!
-    if is_valid_transfer?
-      EthscriptionOwnershipVersion.create!(
-        transaction_hash: transaction_hash,
-        ethscription_transaction_hash: ethscription_transaction_hash,
-        transfer_index: transfer_index,
-        block_number: block_number,
-        transaction_index: transaction_index,
-        block_timestamp: block_timestamp,
-        current_owner: to_address,
-        previous_owner: from_address,
-      )
-    end
+    EthscriptionOwnershipVersion.create!(
+      transaction_hash: transaction_hash,
+      ethscription_transaction_hash: ethscription_transaction_hash,
+      transfer_index: transfer_index,
+      block_number: block_number,
+      transaction_index: transaction_index,
+      block_timestamp: block_timestamp,
+      block_blockhash: block_blockhash,
+      current_owner: to_address,
+      previous_owner: from_address,
+    )
   end
   
   def is_valid_transfer?
@@ -65,25 +69,5 @@ class EthscriptionTransfer < ApplicationRecord
     end
     
     true
-  end
-  
-  def valid_transfers_of_ethscription
-    transfers_to_use = ethscription.reload.ethscription_transfers
-    
-    sorted = transfers_to_use.sort_by do |transfer|
-      [transfer.block_number, transfer.transaction_index, transfer.transfer_index]
-    end
-    
-    sorted.each.with_object([]) do |transfer, valid|
-      basic_rule_passes = valid.empty? ||
-                          transfer.from == valid.last.to
-  
-      previous_owner_rule_passes = transfer.enforced_previous_owner.nil? ||
-                                   transfer.enforced_previous_owner == valid.last&.from
-  
-      if basic_rule_passes && previous_owner_rule_passes
-        valid << transfer
-      end
-    end
   end
 end

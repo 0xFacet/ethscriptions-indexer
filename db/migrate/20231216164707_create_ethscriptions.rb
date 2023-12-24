@@ -30,6 +30,8 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
       t.index [:block_number, :transaction_index, :content_sha]
       t.index :block_number
       t.index :block_timestamp
+      t.index :block_blockhash
+      t.string :block_blockhash, null: false
       t.index :creator
       t.index :current_owner
       t.index :ethscription_number, unique: true
@@ -52,7 +54,8 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
       t.check_constraint "current_owner ~ '^0x[a-f0-9]{40}$'"
       t.check_constraint "initial_owner ~ '^0x[a-f0-9]{40}$'"
       t.check_constraint "previous_owner ~ '^0x[a-f0-9]{40}$'"
-    
+      t.check_constraint "block_blockhash ~ '^0x[a-f0-9]{64}$'"
+      
       t.foreign_key :eth_blocks, column: :block_number, primary_key: :block_number, on_delete: :cascade
       t.foreign_key :eth_transactions, column: :transaction_hash, primary_key: :transaction_hash, on_delete: :cascade
       

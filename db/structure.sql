@@ -272,6 +272,7 @@ CREATE TABLE public.eth_transactions (
     transaction_hash character varying NOT NULL,
     block_number bigint NOT NULL,
     block_timestamp bigint NOT NULL,
+    block_blockhash character varying NOT NULL,
     from_address character varying NOT NULL,
     to_address character varying,
     input text NOT NULL,
@@ -286,6 +287,7 @@ CREATE TABLE public.eth_transactions (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_37ed5d6017 CHECK (((to_address)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_4250f2c315 CHECK (((block_blockhash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_9cdbd3b1ad CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_a4d3f41974 CHECK (((from_address)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_d460e80110 CHECK (((created_contract_address)::text ~ '^0x[a-f0-9]{40}$'::text)),
@@ -323,6 +325,7 @@ CREATE TABLE public.ethscription_ownership_versions (
     ethscription_transaction_hash character varying NOT NULL,
     transfer_index bigint NOT NULL,
     block_number bigint NOT NULL,
+    block_blockhash character varying NOT NULL,
     transaction_index bigint NOT NULL,
     block_timestamp bigint NOT NULL,
     current_owner character varying NOT NULL,
@@ -331,6 +334,7 @@ CREATE TABLE public.ethscription_ownership_versions (
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_0401bc8d3b CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_073cb8a4e9 CHECK (((current_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_3c5af30513 CHECK (((block_blockhash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_b5b3ce91a9 CHECK (((previous_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_f8a9e94d3c CHECK (((ethscription_transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text))
 );
@@ -367,6 +371,7 @@ CREATE TABLE public.ethscription_transfers (
     to_address character varying NOT NULL,
     block_number bigint NOT NULL,
     block_timestamp bigint NOT NULL,
+    block_blockhash character varying NOT NULL,
     event_log_index bigint,
     transfer_index bigint NOT NULL,
     transaction_index bigint NOT NULL,
@@ -374,6 +379,7 @@ CREATE TABLE public.ethscription_transfers (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_1c9802c481 CHECK (((enforced_previous_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_448edb0194 CHECK (((block_blockhash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_7959eeae60 CHECK (((from_address)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_7f4ef1507d CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_a138317254 CHECK (((to_address)::text ~ '^0x[a-f0-9]{40}$'::text))
@@ -425,11 +431,13 @@ CREATE TABLE public.ethscriptions (
     gas_used bigint NOT NULL,
     transaction_fee numeric NOT NULL,
     value numeric NOT NULL,
+    block_blockhash character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_52497428f2 CHECK (((previous_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_528fcbfbaa CHECK (((content_sha)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_6f8922831e CHECK (((current_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_788fa87594 CHECK (((block_blockhash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_84591e2730 CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_b577b97822 CHECK (((creator)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_df21fdbe02 CHECK (((initial_owner)::text ~ '^0x[a-f0-9]{40}$'::text))
@@ -718,6 +726,13 @@ CREATE INDEX index_eth_blocks_on_updated_at ON public.eth_blocks USING btree (up
 
 
 --
+-- Name: index_eth_transactions_on_block_blockhash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_eth_transactions_on_block_blockhash ON public.eth_transactions USING btree (block_blockhash);
+
+
+--
 -- Name: index_eth_transactions_on_block_number; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -788,10 +803,24 @@ CREATE INDEX index_eth_transactions_on_updated_at ON public.eth_transactions USI
 
 
 --
+-- Name: index_ethscription_ownership_versions_on_block_blockhash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_ownership_versions_on_block_blockhash ON public.ethscription_ownership_versions USING btree (block_blockhash);
+
+
+--
 -- Name: index_ethscription_ownership_versions_on_block_number; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_ethscription_ownership_versions_on_block_number ON public.ethscription_ownership_versions USING btree (block_number);
+
+
+--
+-- Name: index_ethscription_ownership_versions_on_block_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_ownership_versions_on_block_timestamp ON public.ethscription_ownership_versions USING btree (block_timestamp);
 
 
 --
@@ -830,10 +859,24 @@ CREATE INDEX index_ethscription_ownership_versions_on_updated_at ON public.ethsc
 
 
 --
+-- Name: index_ethscription_transfers_on_block_blockhash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_transfers_on_block_blockhash ON public.ethscription_transfers USING btree (block_blockhash);
+
+
+--
 -- Name: index_ethscription_transfers_on_block_number; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_ethscription_transfers_on_block_number ON public.ethscription_transfers USING btree (block_number);
+
+
+--
+-- Name: index_ethscription_transfers_on_block_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_transfers_on_block_timestamp ON public.ethscription_transfers USING btree (block_timestamp);
 
 
 --
@@ -876,6 +919,13 @@ CREATE INDEX index_ethscription_transfers_on_transaction_hash ON public.ethscrip
 --
 
 CREATE INDEX index_ethscription_transfers_on_updated_at ON public.ethscription_transfers USING btree (updated_at);
+
+
+--
+-- Name: index_ethscriptions_on_block_blockhash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscriptions_on_block_blockhash ON public.ethscriptions USING btree (block_blockhash);
 
 
 --

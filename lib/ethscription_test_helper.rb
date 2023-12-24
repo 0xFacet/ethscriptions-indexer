@@ -57,6 +57,7 @@ module EthscriptionTestHelper
       block_number: block_number,
       block_timestamp: eth_block.timestamp,
       transaction_hash: tx_hash || "0x" + SecureRandom.hex(32),
+      block_blockhash: eth_block.blockhash,
       from_address: from.downcase,
       to_address: to.downcase,
       transaction_index: transaction_index,

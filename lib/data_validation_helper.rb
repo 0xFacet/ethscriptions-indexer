@@ -1,11 +1,4 @@
 module DataValidationHelper
-  class OldEthscription < ApplicationRecord
-    self.table_name = "ethscriptions"
-    has_many :ethscription_transfers,
-      primary_key: 'id',
-      foreign_key: 'ethscription_id'
-  end
-  
   def self.validate_transfers(old_db)
     field_mapping = {
       transaction_hash: "transaction_hash",
@@ -131,5 +124,30 @@ module DataValidationHelper
     end
   
     true
+  end
+  
+  class OldEthscription < ApplicationRecord
+    self.table_name = "ethscriptions"
+    has_many :ethscription_transfers,
+      primary_key: 'id',
+      foreign_key: 'ethscription_id'
+      
+    def valid_transfers
+      sorted = ethscription_transfers.sort_by do |transfer|
+        [transfer.block_number, transfer.transaction_index, transfer.event_log_index]
+      end
+      
+      sorted.each.with_object([]) do |transfer, valid|
+        basic_rule_passes = valid.empty? ||
+                            transfer.from == valid.last.to
+    
+        previous_owner_rule_passes = transfer.enforced_previous_owner.nil? ||
+                                      transfer.enforced_previous_owner == valid.last&.from
+    
+        if basic_rule_passes && previous_owner_rule_passes
+          valid << transfer
+        end
+      end
+    end
   end
 end

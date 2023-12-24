@@ -37,16 +37,11 @@ class EthBlock < ApplicationRecord
   def self.import_blocks_until_done
     loop do
       begin
-        EthBlock.import_blocks(
+        imported_blocks = EthBlock.import_blocks(
           EthBlock.next_blocks_to_import(import_batch_size)
         )
         
-        last_prune_time = Rails.cache.read('EthTransaction:last_prune_time')
-        
-        if last_prune_time.nil? || Time.current - last_prune_time >= 1.hour
-          EthTransaction.delay(priority: 1).prune_transactions
-          Rails.cache.write('EthTransaction:last_prune_time', Time.current)
-        end
+        EthTransaction.delay.prune_transactions(imported_blocks)
       rescue BlockNotReadyToImportError => e
         puts "#{e.message}. Stopping import."
         break

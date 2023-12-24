@@ -283,8 +283,8 @@ class EthTransaction < ApplicationRecord
     end
   end
   
-  def self.prune_transactions
-    EthTransaction
+  def self.prune_transactions(block_number)
+    EthTransaction.where(block_number: block_number)
       .where.not(transaction_hash: Ethscription.select(:transaction_hash))
       .where.not(transaction_hash: EthscriptionTransfer.select(:transaction_hash))
       .delete_all

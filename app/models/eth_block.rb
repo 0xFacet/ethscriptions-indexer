@@ -1,14 +1,17 @@
 class EthBlock < ApplicationRecord
   class BlockNotReadyToImportError < StandardError; end
-  
-  has_many :eth_transactions, foreign_key: :block_number, primary_key: :block_number,
-    inverse_of: :eth_block
-  has_many :ethscriptions, foreign_key: :block_number, primary_key: :block_number,
-    inverse_of: :eth_block
-  has_many :ethscription_transfers, foreign_key: :block_number, primary_key: :block_number,
-    inverse_of: :eth_block
-  has_many :ethscription_ownership_versions, foreign_key: :block_number, primary_key: :block_number,
-    inverse_of: :eth_block
+
+  %i[
+    eth_transactions
+    ethscriptions
+    ethscription_transfers
+    ethscription_ownership_versions
+  ].each do |association|
+    has_many association,
+      foreign_key: :block_number,
+      primary_key: :block_number,
+      inverse_of: :eth_block
+  end
   
   before_validation :generate_attestation_hash, if: -> { imported_at.present? }
     
@@ -90,7 +93,7 @@ class EthBlock < ApplicationRecord
     end
     
     blocks_per_second = (block_numbers.length / (Time.current - start)).round(2)
-    puts "Imported #{res.map(&:ethscription_imported).sum} ethscriptions"
+    puts "Imported #{res.map(&:ethscriptions_imported).sum} ethscriptions"
     puts "Imported #{block_numbers.length} blocks. #{blocks_per_second} blocks / s"
     
     block_numbers
@@ -98,11 +101,6 @@ class EthBlock < ApplicationRecord
   
   def self.import_block(block_number, block_by_number_response, receipts_response)
     ActiveRecord::Base.transaction do
-      # unless EthBlock.next_block_to_import == block_number
-      #   logger.info "Block Importer: #{block_number} is not next to import"
-      #   raise ActiveRecord::Rollback
-      # end
-      
       result = block_by_number_response['result']
       
       validate_ready_to_import!(block_by_number_response, receipts_response)
@@ -159,7 +157,7 @@ class EthBlock < ApplicationRecord
         
         eth_transactions.each(&:process!)
         
-        ethscription_imported = eth_transactions.map(&:ethscription).compact.size
+        ethscriptions_imported = eth_transactions.map(&:ethscription).compact.size
       end
       
       block_record.update!(imported_at: Time.current)
@@ -167,7 +165,7 @@ class EthBlock < ApplicationRecord
       puts "Block Importer: imported block #{block_number}"
       
       OpenStruct.new(
-        ethscription_imported: ethscription_imported.to_i
+        ethscriptions_imported: ethscriptions_imported.to_i
       )
     end
   rescue ActiveRecord::RecordNotUnique => e
@@ -219,28 +217,6 @@ class EthBlock < ApplicationRecord
     (max_db_block + 1..max_db_block + n).to_a
   end
   
-  def essential_attributes
-    attributes.slice(
-      'block_number',
-      'timestamp',
-      "blockhash",
-      "parent_blockhash"
-    )
-  end
-  
-  def as_json(options = {})
-    super(
-      options.merge(
-        only: [
-          :block_number,
-          :imported_at,
-          :blockhash,
-          :parent_blockhash,
-        ],
-      )
-    ).with_indifferent_access
-  end
-  
   def generate_attestation_hash
     hash = Digest::SHA256.new
     
@@ -249,17 +225,15 @@ class EthBlock < ApplicationRecord
     
     hash << parent_state_hash.to_s
     
-    hashable_attributes.each do |attr|
-      value = send(attr)
-      hash << (value.nil? ? 'NULL' : value.to_s)
-    end
+    hash << hashable_attributes.map do |attr|
+      send(attr)
+    end.to_json
 
     associations_to_hash.each do |association|
       hashable_attributes = quoted_hashable_attributes(association.klass)
       records = association_scope(association).pluck(*hashable_attributes)
 
-      records.map! { |record| record.nil? ? 'NULL' : record }
-      hash << records.join
+      hash << records.to_json
     end
 
     self.state_hash = "0x" + hash.hexdigest

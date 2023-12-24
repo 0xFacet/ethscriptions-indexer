@@ -16,9 +16,8 @@ class Ethscription < ApplicationRecord
   MAX_MIMETYPE_LENGTH = 1000
   
   def create_initial_transfer!
-    eth_transaction.ethscription_transfers.create!(
+    ethscription_transfers.create!(
       {
-        ethscription_transaction_hash: transaction_hash,
         from_address: creator,
         to_address: initial_owner,
         transfer_index: eth_transaction.transfer_index,
@@ -74,20 +73,6 @@ class Ethscription < ApplicationRecord
   
   def content_is_unique?
     !Ethscription.exists?(content_sha: content_sha)
-  end
-  
-  def essential_attributes
-    attributes.slice(
-      "transaction_hash",
-      "block_number",
-      "from_address",
-      "to_address",
-      "creator",
-      "initial_owner",
-      "current_owner",
-      "previous_owner",
-      "content_sha",
-    )
   end
   
   def as_json(options = {})

@@ -133,6 +133,7 @@ class EthBlock < ApplicationRecord
         EthTransaction.new(
           block_number: block_record.block_number,
           block_timestamp: block_record.timestamp,
+          block_blockhash: block_record.blockhash,
           transaction_hash: tx['hash'],
           from_address: tx['from'],
           to_address: tx['to'],

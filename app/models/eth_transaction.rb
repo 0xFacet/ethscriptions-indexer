@@ -46,6 +46,7 @@ class EthTransaction < ApplicationRecord
       transaction_hash: transaction_hash,
       block_number: block_number,
       block_timestamp: block_timestamp,
+      block_blockhash: block_blockhash,
       transaction_index: transaction_index,
       gas_price: gas_price,
       gas_used: gas_used,
@@ -125,6 +126,7 @@ class EthTransaction < ApplicationRecord
       eth_transaction: self,
       block_number: block_number,
       block_timestamp: block_timestamp,
+      block_blockhash: block_blockhash,
       transaction_index: transaction_index,
     }
   end

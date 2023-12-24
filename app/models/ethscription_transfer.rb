@@ -41,6 +41,7 @@ class EthscriptionTransfer < ApplicationRecord
       block_number: block_number,
       transaction_index: transaction_index,
       block_timestamp: block_timestamp,
+      block_blockhash: block_blockhash,
       current_owner: to_address,
       previous_owner: from_address,
     )

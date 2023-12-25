@@ -37,11 +37,9 @@ class EthBlock < ApplicationRecord
   def self.import_blocks_until_done
     loop do
       begin
-        imported_blocks = EthBlock.import_blocks(
+        EthBlock.import_blocks(
           EthBlock.next_blocks_to_import(import_batch_size)
         )
-        
-        EthTransaction.delay.prune_transactions(imported_blocks)
       rescue BlockNotReadyToImportError => e
         puts "#{e.message}. Stopping import."
         break
@@ -155,6 +153,8 @@ class EthBlock < ApplicationRecord
         
         ethscriptions_imported = eth_transactions.map(&:ethscription).compact.size
       end
+      
+      EthTransaction.prune_transactions(block_number)
       
       block_record.update!(imported_at: Time.current)
       

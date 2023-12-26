@@ -576,6 +576,93 @@ ALTER SEQUENCE public.friendly_id_slugs_id_seq OWNED BY public.friendly_id_slugs
 
 
 --
+-- Name: listing_cancellations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.listing_cancellations (
+    id bigint NOT NULL,
+    marketplace_address character varying NOT NULL,
+    ethscription_transaction_hash character varying,
+    listing_id character varying,
+    seller character varying NOT NULL,
+    cancellation_time bigint,
+    eth_transaction_hash character varying NOT NULL,
+    cancellation_type integer NOT NULL,
+    block_number bigint NOT NULL,
+    transaction_index bigint NOT NULL,
+    log_index bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_rails_4c84eae6ef CHECK (((marketplace_address)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_c7d6c3cc84 CHECK (((seller)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_cb798a8d5f CHECK ((NOT ((ethscription_transaction_hash IS NOT NULL) AND (listing_id IS NOT NULL))))
+);
+
+
+--
+-- Name: listing_cancellations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.listing_cancellations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: listing_cancellations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.listing_cancellations_id_seq OWNED BY public.listing_cancellations.id;
+
+
+--
+-- Name: listings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.listings (
+    id bigint NOT NULL,
+    listing_id character varying NOT NULL,
+    ethscription_transaction_hash character varying NOT NULL,
+    seller character varying NOT NULL,
+    price numeric NOT NULL,
+    start_time bigint NOT NULL,
+    end_time bigint NOT NULL,
+    domain_name character varying NOT NULL,
+    verifying_contract character varying NOT NULL,
+    chain_id integer NOT NULL,
+    domain_version character varying NOT NULL,
+    signature text NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_rails_13b2e14f5d CHECK (((verifying_contract)::text ~ '^0x[a-f0-9]{40}$'::text)),
+    CONSTRAINT chk_rails_d8a3ec061c CHECK (((ethscription_transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
+    CONSTRAINT chk_rails_f5b78d3b05 CHECK (((seller)::text ~ '^0x[a-f0-9]{40}$'::text))
+);
+
+
+--
+-- Name: listings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.listings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: listings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.listings_id_seq OWNED BY public.listings.id;
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -645,6 +732,20 @@ ALTER TABLE ONLY public.ethscriptions ALTER COLUMN id SET DEFAULT nextval('publi
 --
 
 ALTER TABLE ONLY public.friendly_id_slugs ALTER COLUMN id SET DEFAULT nextval('public.friendly_id_slugs_id_seq'::regclass);
+
+
+--
+-- Name: listing_cancellations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.listing_cancellations ALTER COLUMN id SET DEFAULT nextval('public.listing_cancellations_id_seq'::regclass);
+
+
+--
+-- Name: listings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.listings ALTER COLUMN id SET DEFAULT nextval('public.listings_id_seq'::regclass);
 
 
 --
@@ -725,6 +826,22 @@ ALTER TABLE ONLY public.ethscriptions
 
 ALTER TABLE ONLY public.friendly_id_slugs
     ADD CONSTRAINT friendly_id_slugs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: listing_cancellations listing_cancellations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.listing_cancellations
+    ADD CONSTRAINT listing_cancellations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: listings listings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.listings
+    ADD CONSTRAINT listings_pkey PRIMARY KEY (id);
 
 
 --
@@ -1282,6 +1399,104 @@ CREATE INDEX index_friendly_id_slugs_on_sluggable_type_and_sluggable_id ON publi
 
 
 --
+-- Name: index_listing_cancellations_on_block_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_listing_cancellations_on_block_number ON public.listing_cancellations USING btree (block_number);
+
+
+--
+-- Name: index_listing_cancellations_on_block_number_and_log_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_listing_cancellations_on_block_number_and_log_index ON public.listing_cancellations USING btree (block_number, log_index);
+
+
+--
+-- Name: index_listing_cancellations_on_cancellation_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_listing_cancellations_on_cancellation_type ON public.listing_cancellations USING btree (cancellation_type);
+
+
+--
+-- Name: index_listing_cancellations_on_eth_transaction_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_listing_cancellations_on_eth_transaction_hash ON public.listing_cancellations USING btree (eth_transaction_hash);
+
+
+--
+-- Name: index_listing_cancellations_on_ethscription_transaction_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_listing_cancellations_on_ethscription_transaction_hash ON public.listing_cancellations USING btree (ethscription_transaction_hash);
+
+
+--
+-- Name: index_listing_cancellations_on_listing_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_listing_cancellations_on_listing_id ON public.listing_cancellations USING btree (listing_id);
+
+
+--
+-- Name: index_listing_cancellations_on_marketplace_address; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_listing_cancellations_on_marketplace_address ON public.listing_cancellations USING btree (marketplace_address);
+
+
+--
+-- Name: index_listing_cancellations_on_marketplace_address_and_seller; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_listing_cancellations_on_marketplace_address_and_seller ON public.listing_cancellations USING btree (marketplace_address, seller);
+
+
+--
+-- Name: index_listings_on_ethscription_transaction_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_listings_on_ethscription_transaction_hash ON public.listings USING btree (ethscription_transaction_hash);
+
+
+--
+-- Name: index_listings_on_listing_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_listings_on_listing_id ON public.listings USING btree (listing_id);
+
+
+--
+-- Name: index_listings_on_seller; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_listings_on_seller ON public.listings USING btree (seller);
+
+
+--
+-- Name: index_listings_on_verifying_contract_and_end_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_listings_on_verifying_contract_and_end_time ON public.listings USING btree (verifying_contract, end_time);
+
+
+--
+-- Name: index_listings_on_verifying_contract_and_seller; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_listings_on_verifying_contract_and_seller ON public.listings USING btree (verifying_contract, seller);
+
+
+--
+-- Name: index_listings_on_verifying_contract_and_start_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_listings_on_verifying_contract_and_start_time ON public.listings USING btree (verifying_contract, start_time);
+
+
+--
 -- Name: eth_blocks check_block_imported_at_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -1356,11 +1571,43 @@ ALTER TABLE ONLY public.ethscription_transfers
 
 
 --
+-- Name: listings fk_rails_47dce0cc26; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.listings
+    ADD CONSTRAINT fk_rails_47dce0cc26 FOREIGN KEY (ethscription_transaction_hash) REFERENCES public.ethscriptions(transaction_hash);
+
+
+--
 -- Name: eth_transactions fk_rails_4937ed3300; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.eth_transactions
     ADD CONSTRAINT fk_rails_4937ed3300 FOREIGN KEY (block_number) REFERENCES public.eth_blocks(block_number) ON DELETE CASCADE;
+
+
+--
+-- Name: listing_cancellations fk_rails_690ce45a4c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.listing_cancellations
+    ADD CONSTRAINT fk_rails_690ce45a4c FOREIGN KEY (eth_transaction_hash) REFERENCES public.eth_transactions(transaction_hash);
+
+
+--
+-- Name: listing_cancellations fk_rails_6c85376bf5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.listing_cancellations
+    ADD CONSTRAINT fk_rails_6c85376bf5 FOREIGN KEY (listing_id) REFERENCES public.listings(listing_id);
+
+
+--
+-- Name: listing_cancellations fk_rails_736826714d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.listing_cancellations
+    ADD CONSTRAINT fk_rails_736826714d FOREIGN KEY (ethscription_transaction_hash) REFERENCES public.ethscriptions(transaction_hash);
 
 
 --
@@ -1418,6 +1665,8 @@ ALTER TABLE ONLY public.ethscription_ownership_versions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20231224224427'),
+('20231224223758'),
 ('20231224222422'),
 ('20231224221330'),
 ('20231224221205'),

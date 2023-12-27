@@ -104,7 +104,13 @@ class EthBlock < ApplicationRecord
       parent_block = EthBlock.find_by(block_number: block_number - 1)
       
       if (block_number > genesis_blocks.max) && parent_block.blockhash != result['parentHash']
-        logger.info "Block Importer: Parent block hash does not match, reorg detected"
+        Airbrake.notify("
+          Reorg detected: #{block_number},
+          #{parent_block.blockhash},
+          #{result['parentHash']},
+          Deleting block(s): #{EthBlock.where("block_number >= ?", parent_block.block_number).pluck(:block_number).join(', ')}
+        ")
+        
         EthBlock.where("block_number >= ?", parent_block.block_number).delete_all
         return
       end

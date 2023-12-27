@@ -13,6 +13,9 @@ class EthBlock < ApplicationRecord
       inverse_of: :eth_block
   end
   
+  scope :newest_first, -> { order(block_number: :desc) }
+  scope :oldest_first, -> { order(block_number: :asc) }
+  
   before_validation :generate_attestation_hash, if: -> { imported_at.present? }
     
   def self.genesis_blocks

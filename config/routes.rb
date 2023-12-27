@@ -2,6 +2,9 @@ Rails.application.routes.draw do
   def draw_routes
     resources :ethscriptions, only: [:index, :show] do
     end
+    
+    resources :blocks, only: [:index, :show] do
+    end
   end
 
   draw_routes

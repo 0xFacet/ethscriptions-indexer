@@ -44,7 +44,7 @@ module DataValidationHelper
     ActiveRecord::Base.establish_connection
   end
   
-  def bulk_validate(old_db)
+  def self.bulk_validate(old_db)
     field_mapping = {
       transaction_hash: "transaction_hash",
       current_owner: "current_owner",
@@ -90,8 +90,6 @@ module DataValidationHelper
       if failed_checks.any?
         binding.pry
         puts "Checks failed for transaction_hash #{local_record.transaction_hash}: #{failed_checks.keys.join(', ')}"
-      else
-        puts "Checks passed for transaction_hash #{local_record.transaction_hash}"
       end
     end
     

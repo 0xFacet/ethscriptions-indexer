@@ -80,3 +80,5 @@ gem "rack-attack", "~> 6.6"
 gem "delayed_job_active_record", "~> 4.1"
 
 gem "httparty", "~> 0.21.0"
+
+gem "friendly_id", "~> 5.5"

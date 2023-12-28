@@ -18,6 +18,17 @@ class EthBlock < ApplicationRecord
   
   before_validation :generate_attestation_hash, if: -> { imported_at.present? }
     
+  def self.ethereum_client
+    @_ethereum_client ||= begin
+      client_class = ENV.fetch('ETHEREUM_CLIENT_CLASS', 'AlchemyClient').constantize
+      
+      client_class.new(
+        api_key: ENV.fetch('ETHEREUM_CLIENT_API_KEY'),
+        network: ENV.fetch('ETHEREUM_NETWORK')
+      )
+    end
+  end
+    
   def self.genesis_blocks
     blocks = if ENV.fetch('ETHEREUM_NETWORK') == "eth-mainnet"
       [1608625, 3369985, 3981254, 5873780, 8205613, 9046950,
@@ -62,19 +73,13 @@ class EthBlock < ApplicationRecord
     
     block_by_number_promises = block_numbers.map do |block_number|
       Concurrent::Promise.execute do
-        [block_number, AlchemyClient.query_api(
-          method: 'eth_getBlockByNumber',
-          params: ['0x' + block_number.to_s(16), true]
-        )]
+        [block_number, ethereum_client.get_block(block_number)]
       end
     end
     
     receipts_promises = block_numbers.map do |block_number|
       Concurrent::Promise.execute do
-        [block_number, AlchemyClient.query_api(
-          method: 'alchemy_getTransactionReceipts',
-          params: [{ blockNumber: "0x" + block_number.to_s(16) }]
-        )]
+        [block_number, ethereum_client.get_transaction_receipts(block_number)]
       end
     end
     

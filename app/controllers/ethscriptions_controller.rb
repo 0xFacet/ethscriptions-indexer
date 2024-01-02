@@ -1,6 +1,6 @@
 class EthscriptionsController < ApplicationController
   def index
-    page = (params[:page] || 1).to_i
+    page = (params[:page] || 1).to_i.clamp(1, 10)
     per_page = (params[:per_page] || 25).to_i.clamp(1, 50)
     
     scope = Ethscription.all.page(page).per(per_page).includes(:ethscription_transfers)
@@ -33,5 +33,25 @@ class EthscriptionsController < ApplicationController
     end
     
     render json: ethscription
+  end
+  
+  def data
+    scope = Ethscription.all
+    
+    id_or_hash = params[:id].to_s.downcase
+    
+    scope = id_or_hash.match?(/\A0x[0-9a-f]{64}\z/) ? 
+      scope.where(transaction_hash: params[:id]) : 
+      scope.where(ethscription_number: params[:id])
+    
+    item = scope.first
+    
+    if item
+      uri_obj = item.parsed_data_uri
+      
+      send_data(uri_obj.decoded_data, type: uri_obj.mimetype, disposition: 'inline')
+    else
+      head 404
+    end
   end
 end

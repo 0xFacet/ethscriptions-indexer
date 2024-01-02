@@ -102,9 +102,9 @@ class EthBlock < ApplicationRecord
   
   def self.import_block(block_number, block_by_number_response, receipts_response)
     ActiveRecord::Base.transaction do
-      result = block_by_number_response['result']
-      
       validate_ready_to_import!(block_by_number_response, receipts_response)
+
+      result = block_by_number_response['result']
       
       parent_block = EthBlock.find_by(block_number: block_number - 1)
       

@@ -1,6 +1,9 @@
 Rails.application.routes.draw do
   def draw_routes
     resources :ethscriptions, only: [:index, :show] do
+      collection do
+        get "/:id/data", to: "ethscriptions#data"
+      end
     end
     
     resources :blocks, only: [:index, :show] do

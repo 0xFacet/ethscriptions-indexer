@@ -385,9 +385,9 @@ CREATE TABLE public.ethscriptions (
     content_uri text NOT NULL,
     content_sha character varying NOT NULL,
     esip6 boolean NOT NULL,
-    mimetype character varying NOT NULL,
-    media_type character varying NOT NULL,
-    mime_subtype character varying NOT NULL,
+    mimetype character varying(1000) NOT NULL,
+    media_type character varying(1000) NOT NULL,
+    mime_subtype character varying(1000) NOT NULL,
     gas_price numeric NOT NULL,
     gas_used bigint NOT NULL,
     transaction_fee numeric NOT NULL,
@@ -654,7 +654,7 @@ CREATE UNIQUE INDEX index_eth_blocks_on_state_hash ON public.eth_blocks USING bt
 -- Name: index_eth_blocks_on_timestamp; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_eth_blocks_on_timestamp ON public.eth_blocks USING btree ("timestamp");
+CREATE UNIQUE INDEX index_eth_blocks_on_timestamp ON public.eth_blocks USING btree ("timestamp");
 
 
 --

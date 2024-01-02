@@ -30,7 +30,7 @@ RSpec.describe EthBlock, type: :model do
       imported_at: Time.now,
       blockhash: "0x" + SecureRandom.hex(32),
       parent_blockhash: parent_blockhash,
-      timestamp: Time.zone.now,
+      timestamp: block_number,
       is_genesis_block: EthBlock.genesis_blocks.include?(block_number)
     )
   end

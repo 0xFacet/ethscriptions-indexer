@@ -49,7 +49,7 @@ module EthscriptionTestHelper
       block_number: block_number,
       blockhash: "0x" + SecureRandom.hex(32),
       parent_blockhash: parent_hash,
-      timestamp: Time.zone.now,
+      timestamp: parent_block&.timestamp.to_i + 12,
       is_genesis_block: EthBlock.genesis_blocks.include?(block_number)
     )
     

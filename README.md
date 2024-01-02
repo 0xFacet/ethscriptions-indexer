@@ -76,13 +76,7 @@ Now run the process to index ethscriptions!
 bundle exec clockwork config/main_importer_clock.rb
 ```
 
-Run this one to do async tasks like assign ethscription numbers:
-
-```bash
-bundle exec clockwork config/secondary_clock.rb
-```
-
-You'll want to keep these two running in the background so you can process everything.
+You'll want to keep this running in the background so you can process everything. If your indexer instance is behind and you want to catch up quickly you can adjust the `BLOCK_IMPORT_BATCH_SIZE` in your `.env`. With Alchemy you can set this as high as 30 and still see a performance improvement.
 
 Now start the web server on a port of your choice, for example 4000:
 
@@ -90,4 +84,6 @@ Now start the web server on a port of your choice, for example 4000:
 rails s -p 4000
 ```
 
-You can use this web server to access the API! (Note: at the time of writing the API doesn't exist! But it will soon)
+You can use this web server to access the API!
+
+Try `http://localhost:4000/ethscriptions/0` to see the first ethscription or `http://localhost:4000/blocks/:number` to see details of any block.

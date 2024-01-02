@@ -86,4 +86,4 @@ rails s -p 4000
 
 You can use this web server to access the API!
 
-Try `http://localhost:4000/ethscriptions/0` to see the first ethscription or `http://localhost:4000/blocks/:number` to see details of any block.
+Try `http://localhost:4000/ethscriptions/0/data` to see the cat made famous in the first ethscription or `http://localhost:4000/blocks/:number` to see details of any block.

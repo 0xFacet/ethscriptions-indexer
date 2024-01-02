@@ -117,7 +117,8 @@ class EthBlock < ApplicationRecord
         ")
         
         EthBlock.where("block_number >= ?", parent_block.block_number).delete_all
-        return
+        
+        return OpenStruct.new(ethscriptions_imported: 0)
       end
       
       block_record = create!(
@@ -174,9 +175,7 @@ class EthBlock < ApplicationRecord
       
       puts "Block Importer: imported block #{block_number}"
       
-      OpenStruct.new(
-        ethscriptions_imported: ethscriptions_imported.to_i
-      )
+      OpenStruct.new(ethscriptions_imported: ethscriptions_imported.to_i)
     end
   rescue ActiveRecord::RecordNotUnique => e
     if e.message.include?("eth_blocks") && e.message.include?("block_number")

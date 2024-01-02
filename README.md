@@ -9,7 +9,7 @@ This is a Ruby on Rails app.
 Run this command inside the directory of your choice to clone the repository:
 
 ```!bash
-git clone https://github.com/0xfacet/eths-indexer
+git clone https://github.com/0xfacet/ethscriptions-indexer
 ```
 
 If you don't already have Ruby Version Manager installed, install it:

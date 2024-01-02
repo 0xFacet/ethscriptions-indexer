@@ -19,6 +19,7 @@ class CreateEthscriptionTransfers < ActiveRecord::Migration[7.1]
       t.index :block_blockhash
       t.index :from_address
       t.index :to_address
+      t.index :enforced_previous_owner
       t.index [:transaction_hash, :event_log_index], unique: true
       t.index [:transaction_hash, :transfer_index], unique: true
       t.index [:block_number, :transaction_index, :event_log_index], unique: true

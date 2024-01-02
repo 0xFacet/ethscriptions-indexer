@@ -5,6 +5,7 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
       t.bigint :block_number, null: false
       t.bigint :transaction_index, null: false
       t.bigint :block_timestamp, null: false
+      t.string :block_blockhash, null: false
       t.bigint :event_log_index
       
       t.bigint :ethscription_number, null: false
@@ -27,11 +28,9 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
       
       t.index [:block_number, :transaction_index], unique: true
       t.index :transaction_hash, unique: true
-      t.index [:block_number, :transaction_index, :content_sha]
       t.index :block_number
       t.index :block_timestamp
       t.index :block_blockhash
-      t.string :block_blockhash, null: false
       t.index :creator
       t.index :current_owner
       t.index :ethscription_number, unique: true
@@ -65,9 +64,6 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
     reversible do |dir|
       dir.up do
         execute <<-SQL
-          DROP TRIGGER IF EXISTS trigger_check_ethscription_order ON ethscriptions;
-          DROP FUNCTION IF EXISTS check_ethscription_order();
-
           CREATE OR REPLACE FUNCTION check_ethscription_order_and_sequence()
           RETURNS TRIGGER AS $$
           BEGIN

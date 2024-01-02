@@ -138,7 +138,7 @@ CREATE FUNCTION public.update_current_owner() RETURNS trigger
               SELECT INTO latest_ownership_version *
               FROM ethscription_ownership_versions
               WHERE ethscription_transaction_hash = NEW.ethscription_transaction_hash
-              ORDER BY block_number DESC, transaction_index DESC
+              ORDER BY block_number DESC, transaction_index DESC, transfer_index DESC
               LIMIT 1;
 
               UPDATE ethscriptions
@@ -151,7 +151,7 @@ CREATE FUNCTION public.update_current_owner() RETURNS trigger
               FROM ethscription_ownership_versions
               WHERE ethscription_transaction_hash = OLD.ethscription_transaction_hash
                 AND id != OLD.id
-              ORDER BY block_number DESC, transaction_index DESC
+              ORDER BY block_number DESC, transaction_index DESC, transfer_index DESC
               LIMIT 1;
 
               UPDATE ethscriptions
@@ -161,7 +161,7 @@ CREATE FUNCTION public.update_current_owner() RETURNS trigger
               WHERE transaction_hash = OLD.ethscription_transaction_hash;
             END IF;
 
-            RETURN NULL; -- result is ignored since this is an AFTER trigger
+            RETURN NULL;
           END;
           $$;
 
@@ -376,6 +376,7 @@ CREATE TABLE public.ethscriptions (
     block_number bigint NOT NULL,
     transaction_index bigint NOT NULL,
     block_timestamp bigint NOT NULL,
+    block_blockhash character varying NOT NULL,
     event_log_index bigint,
     ethscription_number bigint NOT NULL,
     creator character varying NOT NULL,
@@ -392,7 +393,6 @@ CREATE TABLE public.ethscriptions (
     gas_used bigint NOT NULL,
     transaction_fee numeric NOT NULL,
     value numeric NOT NULL,
-    block_blockhash character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_52497428f2 CHECK (((previous_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
@@ -525,13 +525,6 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
--- Name: idx_on_block_number_transaction_index_content_sha_77e354aa25; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_on_block_number_transaction_index_content_sha_77e354aa25 ON public.ethscriptions USING btree (block_number, transaction_index, content_sha);
-
-
---
 -- Name: idx_on_block_number_transaction_index_event_log_ind_94b2c4b953; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -557,13 +550,6 @@ CREATE UNIQUE INDEX idx_on_block_number_transaction_index_transfer_inde_fc9ee599
 --
 
 CREATE INDEX idx_on_current_owner_previous_owner_7bb4bbf3cf ON public.ethscription_ownership_versions USING btree (current_owner, previous_owner);
-
-
---
--- Name: idx_on_ethscription_transaction_hash_block_number_t_a807d2b571; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_on_ethscription_transaction_hash_block_number_t_a807d2b571 ON public.ethscription_ownership_versions USING btree (ethscription_transaction_hash, block_number, transaction_index, transfer_index);
 
 
 --
@@ -823,6 +809,13 @@ CREATE INDEX index_ethscription_transfers_on_block_timestamp ON public.ethscript
 --
 
 CREATE INDEX index_ethscription_transfers_on_created_at ON public.ethscription_transfers USING btree (created_at);
+
+
+--
+-- Name: index_ethscription_transfers_on_enforced_previous_owner; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_transfers_on_enforced_previous_owner ON public.ethscription_transfers USING btree (enforced_previous_owner);
 
 
 --

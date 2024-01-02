@@ -1,4 +1,4 @@
-# Welcome to the pre-release version of the official Open Source Ethscriptions Indexer!
+# Welcome to the official Open Source Ethscriptions Indexer!
 
 This indexer has been extracted and streamlined from the indexer that runs Ethscriptions.com. This indexer has been validated as producing the same results against the live Ethscriptions.com indexer. However this new indexer is not being used in production yet. The plan is to put it into production to power the Facet VM shortly. Let's build it together!
 

@@ -51,7 +51,6 @@ class Ethscription < ApplicationRecord
   end
   
   def mimetype
-    # TODO: Do we still need this?
     parsed_data_uri&.mimetype&.first(MAX_MIMETYPE_LENGTH)
   end
 
@@ -64,8 +63,6 @@ class Ethscription < ApplicationRecord
   end
   
   def valid_ethscription?
-    raise "Need content_uri" if content_uri.nil?
-    # [creator, current_owner, initial_owner].all?(&:present?) &&
     initial_owner.present? &&
     valid_data_uri? &&
     (esip6 || content_is_unique?)

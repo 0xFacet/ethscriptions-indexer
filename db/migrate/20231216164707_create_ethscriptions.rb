@@ -16,9 +16,9 @@ class CreateEthscriptions < ActiveRecord::Migration[7.1]
       t.text :content_uri, null: false
       t.string :content_sha, null: false
       t.boolean :esip6, null: false
-      t.string :mimetype, null: false
-      t.string :media_type, null: false
-      t.string :mime_subtype, null: false
+      t.string :mimetype, null: false, limit: Ethscription::MAX_MIMETYPE_LENGTH
+      t.string :media_type, null: false, limit: Ethscription::MAX_MIMETYPE_LENGTH
+      t.string :mime_subtype, null: false, limit: Ethscription::MAX_MIMETYPE_LENGTH
       
       t.numeric :gas_price, null: false
       t.bigint :gas_used, null: false

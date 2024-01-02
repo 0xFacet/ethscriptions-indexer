@@ -61,8 +61,6 @@ gem "eth", "~> 0.5.11"
 
 gem "activerecord-import", "~> 1.5"
 
-gem "unparser", "~> 0.6.10"
-
 gem "scout_apm", "~> 5.3"
 
 gem "memoist", "~> 0.16.2"
@@ -71,12 +69,6 @@ gem "awesome_print", "~> 1.9"
 
 gem "clipboard"
 
-gem "descriptive_statistics", "~> 2.5"
-
 gem "redis", "~> 5.0"
-
-gem "rack-attack", "~> 6.6"
-
-gem "delayed_job_active_record", "~> 4.1"
 
 gem "httparty", "~> 0.21.0"

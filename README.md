@@ -15,7 +15,7 @@ git clone https://github.com/0xfacet/ethscriptions-indexer
 If you don't already have Ruby Version Manager installed, install it:
 
 ```bash
-\curl -sSL https://get.rvm.io | bash -s stable
+curl -sSL https://get.rvm.io | bash -s stable
 ```
 
 You might need to run this if there is an issue with gpg:
@@ -44,9 +44,13 @@ bundle install
 
 Install postgres if you don't already have it:
 
-```bash
-brew install postgresql
-```
+Mac: `brew install postgresql`
+
+Ubuntu: `sudo apt-get install libpq-dev`
+
+RHEL: `yum install postgresql-devel`
+
+Alpine: `apk add postgresql-dev`
 
 Create the database:
 

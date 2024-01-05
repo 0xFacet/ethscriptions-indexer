@@ -55,7 +55,6 @@ class UniversalClient
             receipts << receipt['result']
         end
 
-        # 返回结果
         result = Hash[
             'id'=> 1,
             'jsonrpc'=> '2.0',

@@ -76,6 +76,7 @@ class EthscriptionsController < ApplicationController
       render json: {
         error: {
           message: "No matching ethscriptions found",
+          resolution: :retry_with_delay
         }
       }, status: :unprocessable_entity
       return

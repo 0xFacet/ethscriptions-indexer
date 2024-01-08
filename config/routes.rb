@@ -3,11 +3,17 @@ Rails.application.routes.draw do
     resources :ethscriptions, only: [:index, :show] do
       collection do
         get "/:id/data", to: "ethscriptions#data"
+        get "/newer_ethscriptions", to: "ethscriptions#newer_ethscriptions"
       end
     end
     
     resources :blocks, only: [:index, :show] do
+      collection do
+        get "/newer_blocks", to: "blocks#newer_blocks"
+      end
     end
+    
+    get "/status", to: "status#indexer_status"
   end
 
   draw_routes

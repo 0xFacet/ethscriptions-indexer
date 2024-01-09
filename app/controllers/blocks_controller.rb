@@ -28,4 +28,21 @@ class BlocksController < ApplicationController
 
     render json: block
   end
+  
+  def newer_blocks
+    limit = [params[:limit]&.to_i || 100, 2500].min
+    requested_block_number = params[:block_number].to_i
+    
+    scope = EthBlock.where("block_number >= ?", requested_block_number).
+      limit(limit).
+      where.not(imported_at: nil)
+    
+    res = Rails.cache.fetch(['newer_blocks', scope]) do
+      scope.to_a
+    end
+    
+    render json: {
+      result: res
+    }
+  end
 end

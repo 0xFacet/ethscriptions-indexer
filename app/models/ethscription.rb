@@ -72,8 +72,27 @@ class Ethscription < ApplicationRecord
     !Ethscription.exists?(content_sha: content_sha)
   end
   
+  def self.vm_checksum(
+    last_imported_vm_block_number:,
+    mimetypes:
+  )
+    scope = Ethscription.where("block_number <= ?", last_imported_vm_block_number).oldest_first
+    scope = scope.where(mimetype: mimetypes)
+    
+    subquery = scope.select(:transaction_hash)
+    hash_value = Ethscription.from(subquery, :ethscriptions)
+      .select("encode(digest(array_to_string(array_agg(transaction_hash), ''), 'sha256'), 'hex')
+        as hash_value")
+      .take
+      .hash_value
+  end
+  
   def as_json(options = {})
-    super(options.merge(include: :ethscription_transfers))
+    if options[:include_transfers]
+      super(options.merge(include: :ethscription_transfers))
+    else
+      super(options)
+    end
   end
   
   private

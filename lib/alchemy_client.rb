@@ -30,7 +30,7 @@ class AlchemyClient
       params: params
     }
 
-    url = "#{base_url}/#{api_key}"
+    url = [base_url, api_key].join('/')
 
     HTTParty.post(url, body: data.to_json, headers: headers).parsed_response
   end

@@ -1,8 +1,9 @@
 class UniversalClient
-  attr_accessor :base_url
+  attr_accessor :base_url, :api_key
 
-  def initialize(base_url: ENV['ETHEREUM_CLIENT_BASE_URL'])
+  def initialize(base_url: ENV['ETHEREUM_CLIENT_BASE_URL'], api_key: nil)
     self.base_url = base_url.chomp('/')
+    self.api_key = api_key
   end
 
   def headers
@@ -20,7 +21,9 @@ class UniversalClient
       params: params
     }
 
-    HTTParty.post(endpoint_url, body: data.to_json, headers: headers).parsed_response
+    url = [base_url, api_key].join('/')
+    
+    HTTParty.post(url, body: data.to_json, headers: headers).parsed_response
   end
 
   def get_block(block_number)

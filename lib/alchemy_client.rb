@@ -1,12 +1,9 @@
 class AlchemyClient
-  attr_accessor :api_key, :network
+  attr_accessor :base_url, :api_key
 
-  def initialize(
-    api_key: ENV.fetch('ALCHEMY_API_KEY'),
-    network: ENV.fetch('ETHEREUM_NETWORK')
-  )
+  def initialize(base_url: ENV['ETHEREUM_CLIENT_BASE_URL'], api_key:)
+    self.base_url = base_url.chomp('/')
     self.api_key = api_key
-    self.network = network
   end
 
   def get_block(block_number)
@@ -33,7 +30,7 @@ class AlchemyClient
       params: params
     }
 
-    url = "https://#{network}.g.alchemy.com/v2/#{api_key}"
+    url = "#{base_url}/#{api_key}"
 
     HTTParty.post(url, body: data.to_json, headers: headers).parsed_response
   end

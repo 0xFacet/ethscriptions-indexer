@@ -20,12 +20,22 @@ class EthBlock < ApplicationRecord
     
   def self.ethereum_client
     @_ethereum_client ||= begin
-      client_class = ENV.fetch('ETHEREUM_CLIENT_CLASS', 'AlchemyClient').constantize
-      
-      client_class.new(
-        api_key: ENV.fetch('ETHEREUM_CLIENT_API_KEY'),
-        network: ENV.fetch('ETHEREUM_NETWORK')
-      )
+      client_class_name = ENV.fetch('ETHEREUM_CLIENT_CLASS', 'AlchemyClient')
+
+      if client_class_name == 'UniversalClient' then
+        client_class = client_class_name.constantize
+
+        client_class.new(
+          endpoint_url: ENV.fetch('UNIVERSAL_ENDPOINT_URL'),
+        )
+      else
+        client_class = client_class_name.constantize
+
+        client_class.new(
+          api_key: ENV.fetch('ETHEREUM_CLIENT_API_KEY'),
+          network: ENV.fetch('ETHEREUM_NETWORK')
+        )
+      end
     end
   end
     

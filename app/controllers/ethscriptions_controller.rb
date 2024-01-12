@@ -112,10 +112,8 @@ class EthscriptionsController < ApplicationController
     end
     
     if past_ethscriptions_checksum.present?
-      our_checksum = Ethscription.vm_checksum(
-        last_imported_vm_block_number: requested_block_number - 1,
-        mimetypes: mimetypes
-      )
+      checksum_scope = scope.where("block_number < ?", requested_block_number)
+      our_checksum = Ethscription.scope_checksum(checksum_scope)
       
       if our_checksum != past_ethscriptions_checksum
         render json: {

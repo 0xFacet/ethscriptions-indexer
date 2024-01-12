@@ -23,8 +23,8 @@ class EthBlock < ApplicationRecord
       client_class = ENV.fetch('ETHEREUM_CLIENT_CLASS', 'AlchemyClient').constantize
       
       client_class.new(
-        api_key: ENV.fetch('ETHEREUM_CLIENT_API_KEY'),
-        network: ENV.fetch('ETHEREUM_NETWORK')
+        api_key: ENV['ETHEREUM_CLIENT_API_KEY'],
+        base_url: ENV.fetch('ETHEREUM_CLIENT_BASE_URL')
       )
     end
   end

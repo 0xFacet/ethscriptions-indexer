@@ -171,8 +171,7 @@ class EthscriptionsController < ApplicationController
   
     render json: {
       total_future_ethscriptions: total_ethscriptions_in_future_blocks,
-      blocks: block_data,
-      request_id: SecureRandom.hex(16)
+      blocks: block_data
     }
   end
 end

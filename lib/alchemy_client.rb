@@ -19,6 +19,10 @@ class AlchemyClient
       params: [{ blockNumber: "0x" + block_number.to_s(16) }]
     )
   end
+  
+  def get_block_number
+    query_api(method: 'eth_blockNumber')['result'].to_i(16)
+  end
 
   private
 

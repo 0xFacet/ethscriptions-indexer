@@ -72,8 +72,21 @@ class Ethscription < ApplicationRecord
     !Ethscription.exists?(content_sha: content_sha)
   end
   
+  def self.scope_checksum(scope)
+    subquery = scope.select(:transaction_hash)
+    hash_value = Ethscription.from(subquery, :ethscriptions)
+      .select("encode(digest(array_to_string(array_agg(transaction_hash), ''), 'sha256'), 'hex')
+        as hash_value")
+      .take
+      .hash_value
+  end
+  
   def as_json(options = {})
-    super(options.merge(include: :ethscription_transfers))
+    if options[:include_transfers]
+      super(options.merge(include: :ethscription_transfers))
+    else
+      super(options)
+    end
   end
   
   private

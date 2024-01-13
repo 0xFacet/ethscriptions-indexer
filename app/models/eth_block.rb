@@ -187,11 +187,11 @@ class EthBlock < ApplicationRecord
   end
   
   def self.uncached_global_block_number
-    AlchemyClient.query_api(method: 'eth_blockNumber')['result'].to_i(16)
+    ethereum_client.get_block_number
   end
   
   def self.cached_global_block_number
-    Rails.cache.fetch('global_block_number', expires_in: 1.second) do
+    Rails.cache.fetch('global_block_number', expires_in: 3.seconds) do
       uncached_global_block_number
     end
   end

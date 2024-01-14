@@ -19,7 +19,7 @@ Rails.application.routes.draw do
   draw_routes
 
   # Support legacy indexer namespace
-  namespace :api do
+  scope :api do
     draw_routes
   end
 

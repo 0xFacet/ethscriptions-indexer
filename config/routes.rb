@@ -13,6 +13,13 @@ Rails.application.routes.draw do
       end
     end
     
+    resources :tokens, only: [:index] do
+      collection do
+        get "/holders", to: "tokens#holders"
+        get "/validate_token_items", to: "tokens#validate_token_items"
+      end
+    end
+    
     get "/status", to: "status#indexer_status"
   end
 

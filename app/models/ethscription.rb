@@ -7,6 +7,16 @@ class Ethscription < ApplicationRecord
   
   has_many :ethscription_ownership_versions, foreign_key: :ethscription_transaction_hash, primary_key: :transaction_hash, inverse_of: :ethscription
   
+  has_one :token_item,
+    foreign_key: :ethscription_transaction_hash,
+    primary_key: :transaction_hash,
+    inverse_of: :ethscription
+  
+  has_one :token,
+    foreign_key: :deploy_ethscription_transaction_hash,
+    primary_key: :transaction_hash,
+    inverse_of: :deploy_ethscription
+    
   scope :newest_first, -> { order(block_number: :desc, transaction_index: :desc) }
   scope :oldest_first, -> { order(block_number: :asc, transaction_index: :asc) }
   

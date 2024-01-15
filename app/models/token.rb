@@ -147,6 +147,12 @@ class Token < ApplicationRecord
     end
   end
   
+  def self.batch_token_item_sync
+    all.find_each do |token|
+      token.delay.sync_token_items!
+    end
+  end
+  
   def self.find_deploy_transaction(tick:, p:, max:, lim:)    
     uri = %<data:,{"p":"#{p}","op":"deploy","tick":"#{tick}","max":"#{max}","lim":"#{lim}"}>
     

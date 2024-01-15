@@ -571,17 +571,15 @@ CREATE TABLE public.tokens (
     max_supply bigint NOT NULL,
     total_supply bigint DEFAULT 0 NOT NULL,
     mint_amount bigint NOT NULL,
-    decimals integer NOT NULL,
-    versioned_balances jsonb DEFAULT '{}'::jsonb NOT NULL,
+    balances jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_3458514b65 CHECK (((deploy_ethscription_transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
-    CONSTRAINT chk_rails_49b9979508 CHECK (((protocol)::text = lower((protocol)::text))),
+    CONSTRAINT chk_rails_3d55d7040f CHECK (((max_supply % mint_amount) = 0)),
     CONSTRAINT chk_rails_53ece3f224 CHECK ((total_supply <= max_supply)),
     CONSTRAINT chk_rails_596664ed3b CHECK ((total_supply >= 0)),
     CONSTRAINT chk_rails_656ef5c2e5 CHECK (((tick)::text ~ '^[a-zA-Z0-9]{1,18}$'::text)),
     CONSTRAINT chk_rails_b41faadd12 CHECK ((mint_amount > 0)),
-    CONSTRAINT chk_rails_d17eb6ceff CHECK (((decimals > 0) AND (decimals <= 18))),
     CONSTRAINT chk_rails_d3c8f232c1 CHECK (((protocol)::text ~ '^[a-z0-9-]{1,18}$'::text)),
     CONSTRAINT chk_rails_e954152758 CHECK ((max_supply > 0))
 );
@@ -1244,13 +1242,6 @@ CREATE UNIQUE INDEX index_token_items_on_ethscription_transaction_hash ON public
 --
 
 CREATE UNIQUE INDEX index_tokens_on_deploy_ethscription_transaction_hash ON public.tokens USING btree (deploy_ethscription_transaction_hash);
-
-
---
--- Name: index_tokens_on_protocol; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_tokens_on_protocol ON public.tokens USING btree (protocol);
 
 
 --

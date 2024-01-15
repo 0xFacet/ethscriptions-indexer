@@ -4,6 +4,7 @@ Rails.application.routes.draw do
       collection do
         get "/:id/data", to: "ethscriptions#data"
         get "/newer_ethscriptions", to: "ethscriptions#newer_ethscriptions"
+        get "/filtered", to: "ethscriptions#filtered"
       end
     end
     
@@ -15,6 +16,7 @@ Rails.application.routes.draw do
     
     resources :tokens, only: [:index] do
       collection do
+        get "/balance_of", to: "tokens#balance_of"
         get "/holders", to: "tokens#holders"
         get "/validate_token_items", to: "tokens#validate_token_items"
       end

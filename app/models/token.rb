@@ -78,33 +78,57 @@ class Token < ApplicationRecord
   
   def take_holders_snapshot
     with_lock do
-      snapshots = {}
-
-      last_blocks = EthBlock.where.not(imported_at: nil).order(block_number: :desc).limit(1)
-
-      last_blocks.each do |block|
-        snapshots[block.block_number] = token_balances_at_block_and_tx_index(
-          block.block_number,
-          1e18.to_i
-        )
-      end
-
-      update!(versioned_balances: snapshots)
+      balance_map, latest_block_number, latest_block_hash = token_balances
+      
+      snapshot = {
+        balances: balance_map,
+        as_of_block_number: latest_block_number,
+        as_of_blockhash: latest_block_hash
+      }
+      
+      update!(balances: snapshot)
     end
   end
-  
-  def balances(block_number = nil)
-    if block_number
-      versioned_balances[block_number.to_s]
-    else
-      latest_key = versioned_balances.keys.max_by { |key| key.to_i }
-      versioned_balances[latest_key]
+    
+  def safe_balances(max_blocks_behind = nil)
+    return {} unless EthBlock.exists?(
+      block_number: balances['as_of_block_number'],
+      blockhash: balances['as_of_blockhash']
+    )
+    
+    blocks_behind = EthBlock.cached_global_block_number - balances['as_of_block_number']
+    
+    if max_blocks_behind && blocks_behind > max_blocks_behind
+      return {}
     end
+    
+    balances['balances']
   end
   
-  def balance_of(user, block_number = nil)
-    balances = self.balances(block_number)
-    balances[user]
+  def balance_of(user, max_blocks_behind = nil)
+    safe_balances(max_blocks_behind)[user]
+  end
+  
+  def token_balances
+    item_hashes = token_items.select(:ethscription_transaction_hash)
+    
+    balances = Ethscription.where(transaction_hash: item_hashes).
+      select(
+        :current_owner,
+        Arel.sql("SUM(#{mint_amount}) AS balance"),
+        Arel.sql("(SELECT block_number FROM eth_blocks WHERE imported_at IS NOT NULL ORDER BY block_number DESC LIMIT 1) AS latest_block_number"),
+        Arel.sql("(SELECT blockhash FROM eth_blocks WHERE imported_at IS NOT NULL ORDER BY block_number DESC LIMIT 1) AS latest_block_hash")
+      ).
+      group(:current_owner)
+
+    balance_map = balances.each_with_object({}) do |balance, map|
+      map[balance.current_owner] = balance.balance
+    end
+
+    latest_block_number = balances.first&.latest_block_number
+    latest_block_hash = balances.first&.latest_block_hash
+
+    return balance_map, latest_block_number, latest_block_hash
   end
   
   def token_balances_at_block_and_tx_index(block_number, tx_index)
@@ -157,5 +181,9 @@ class Token < ApplicationRecord
     uri = %<data:,{"p":"#{p}","op":"deploy","tick":"#{tick}","max":"#{max}","lim":"#{lim}"}>
     
     Ethscription.find_by_content_uri(uri)
+  end
+  
+  def as_json(options = {})
+    super(options.merge(except: [:balances]))
   end
 end

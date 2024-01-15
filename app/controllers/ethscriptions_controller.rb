@@ -11,7 +11,9 @@ class EthscriptionsController < ApplicationController
       scope.to_a
     end
     
-    render json: ethscriptions
+    render json: {
+      result: ethscriptions
+    }
   end
   
   def show
@@ -32,7 +34,9 @@ class EthscriptionsController < ApplicationController
       return
     end
     
-    render json: ethscription.as_json(include_transfers: true)
+    render json: {
+      result: ethscription.as_json(include_transfers: true)
+    }
   end
   
   def data
@@ -173,5 +177,40 @@ class EthscriptionsController < ApplicationController
       total_future_ethscriptions: total_ethscriptions_in_future_blocks,
       blocks: block_data
     }
+  end
+  
+  def filtered
+    page = (params[:page] || 1).to_i.clamp(1, 10)
+    per_page = (params[:per_page] || 25).to_i.clamp(1, 50)
+    
+    current_owners = parse_param_array(params[:current_owner])
+    token_tick = parse_param_array(params[:token_tick])&.first
+    token_protocol = parse_param_array(params[:token_protocol])&.first
+
+    scope = Ethscription.all.page(page).per(per_page)
+    
+    scope = scope.where(current_owner: params[:current_owner]) if params[:current_owner].present?
+    
+    if token_tick && token_protocol
+      scope = scope.joins(:token).where(tokens: {tick: token_tick, protocol: token_protocol})
+    end
+    
+    ethscriptions = Rails.cache.fetch(["ethscription-api-filtered", scope]) do
+      scope.to_a
+    end
+    
+    render json: {
+      result: ethscriptions
+    }
+  end
+  
+  private
+  
+  def parse_param_array(param, limit: 100)
+    return if param.blank?
+    
+    Array(JSON.parse(param)).map{|i| i.to_s.downcase}.uniq.take(limit)
+  rescue JSON::ParserError, TypeError
+    Array(param.downcase)
   end
 end

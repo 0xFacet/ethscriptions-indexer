@@ -18,7 +18,7 @@ class TokensController < ApplicationController
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
     
     balances = Rails.cache.fetch(["tokens-api-balances", token]) do
-      token.balances(params[:block_number])
+      token.safe_balances(params[:max_blocks_behind])
     end
     
     render json: {
@@ -29,7 +29,7 @@ class TokensController < ApplicationController
   def balance_of
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
     
-    balance = token.balance_of(params[:address], params[:block_number])
+    balance = token.balance_of(params[:address], params[:max_blocks_behind])
     
     render json: {
       result: balance.to_s

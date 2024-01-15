@@ -186,6 +186,7 @@ class EthscriptionsController < ApplicationController
     current_owners = parse_param_array(params[:current_owner])
     token_tick = parse_param_array(params[:token_tick])&.first
     token_protocol = parse_param_array(params[:token_protocol])&.first
+    transferred_in_tx = parse_param_array(params[:transferred_in_tx])
 
     scope = Ethscription.all.page(page).per(per_page)
     
@@ -193,6 +194,11 @@ class EthscriptionsController < ApplicationController
     
     if token_tick && token_protocol
       scope = scope.joins(:token).where(tokens: {tick: token_tick, protocol: token_protocol})
+    end
+    
+    if transferred_in_tx.present?
+      sub_query = EthscriptionTransfer.where(transaction_hash: transferred_in_tx).select(:ethscription_transaction_hash)
+      scope = scope.where(transaction_hash: sub_query)
     end
     
     ethscriptions = Rails.cache.fetch(["ethscription-api-filtered", scope]) do

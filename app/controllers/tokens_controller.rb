@@ -17,12 +17,8 @@ class TokensController < ApplicationController
   def holders
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
     
-    balances = Rails.cache.fetch(["tokens-api-balances", token]) do
-      token.safe_balances(params[:max_blocks_behind])
-    end
-    
     render json: {
-      result: balances
+      result: token.safe_balances(params[:max_blocks_behind])
     }
   end
   

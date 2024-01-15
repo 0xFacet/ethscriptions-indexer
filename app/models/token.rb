@@ -12,6 +12,7 @@ class Token < ApplicationRecord
     optional: true
   
   scope :minted_out, -> { where("total_supply = max_supply") }
+  scope :not_minted_out, -> { where("total_supply < max_supply") }
   
   def minted_out?
     total_supply == max_supply
@@ -167,14 +168,22 @@ class Token < ApplicationRecord
   
   def self.batch_balance_snapshot
     all.find_each do |token|
-      token.delay.take_holders_snapshot
+      token.take_holders_snapshot_no_duplicate_jobs
     end
   end
   
   def self.batch_token_item_sync
-    all.find_each do |token|
+    not_minted_out.find_each do |token|
       token.delay.sync_token_items!
     end
+  end
+  
+  def take_holders_snapshot_no_duplicate_jobs
+    return if Delayed::Job.
+    where("handler LIKE ?", "%method_name: :take_holders_snapshot%").
+    where("handler ~ ?", ".*name: id\\s+value_before_type_cast: #{id}.*").exists?
+
+    delay.take_holders_snapshot
   end
   
   def self.find_deploy_transaction(tick:, p:, max:, lim:)    

@@ -8,6 +8,9 @@ Rails.application.routes.draw do
       end
     end
     
+    resources :ethscription_transfers, only: [:index] do
+    end
+    
     resources :blocks, only: [:index, :show] do
       collection do
         get "/newer_blocks", to: "blocks#newer_blocks"

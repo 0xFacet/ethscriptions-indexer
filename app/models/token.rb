@@ -80,7 +80,7 @@ class Token < ApplicationRecord
     with_lock do
       snapshots = {}
 
-      last_blocks = EthBlock.where.not(imported_at: nil).order(block_number: :desc).limit(5)
+      last_blocks = EthBlock.where.not(imported_at: nil).order(block_number: :desc).limit(1)
 
       last_blocks.each do |block|
         snapshots[block.block_number] = token_balances_at_block_and_tx_index(

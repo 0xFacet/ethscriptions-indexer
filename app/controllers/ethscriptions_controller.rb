@@ -3,9 +3,35 @@ class EthscriptionsController < ApplicationController
     page = (params[:page] || 1).to_i.clamp(1, 10)
     per_page = (params[:per_page] || 25).to_i.clamp(1, 50)
     
-    scope = Ethscription.all.page(page).per(per_page).includes(:ethscription_transfers)
+    scope = Ethscription.all.page(page).per(per_page)
     
     scope = params[:sort_order]&.downcase == "asc" ? scope.oldest_first : scope.newest_first
+    
+    scope = filter_by_params(scope,
+      :current_owner,
+      :creator,
+      :previous_owner,
+      :mimetype,
+      :media_type,
+      :mime_subtype,
+      :sha,
+      :transaction_hash,
+      :block_number,
+      :ethscription_number
+    )
+
+    token_tick = parse_param_array(params[:token_tick]).first
+    token_protocol = parse_param_array(params[:token_protocol]).first
+    transferred_in_tx = parse_param_array(params[:transferred_in_tx])
+    
+    if token_tick && token_protocol
+      scope = scope.joins(:token).where(tokens: {tick: token_tick, protocol: token_protocol})
+    end
+    
+    if transferred_in_tx.present?
+      sub_query = EthscriptionTransfer.where(transaction_hash: transferred_in_tx).select(:ethscription_transaction_hash)
+      scope = scope.where(transaction_hash: sub_query)
+    end
     
     ethscriptions = Rails.cache.fetch(["ethscription-api-all", scope]) do
       scope.to_a
@@ -176,37 +202,6 @@ class EthscriptionsController < ApplicationController
     render json: {
       total_future_ethscriptions: total_ethscriptions_in_future_blocks,
       blocks: block_data
-    }
-  end
-  
-  def filtered
-    page = (params[:page] || 1).to_i.clamp(1, 10)
-    per_page = (params[:per_page] || 25).to_i.clamp(1, 50)
-    
-    current_owners = parse_param_array(params[:current_owner])
-    token_tick = parse_param_array(params[:token_tick]).first
-    token_protocol = parse_param_array(params[:token_protocol]).first
-    transferred_in_tx = parse_param_array(params[:transferred_in_tx])
-
-    scope = Ethscription.all.page(page).per(per_page)
-    
-    scope = scope.where(current_owner: params[:current_owner]) if params[:current_owner].present?
-    
-    if token_tick && token_protocol
-      scope = scope.joins(:token).where(tokens: {tick: token_tick, protocol: token_protocol})
-    end
-    
-    if transferred_in_tx.present?
-      sub_query = EthscriptionTransfer.where(transaction_hash: transferred_in_tx).select(:ethscription_transaction_hash)
-      scope = scope.where(transaction_hash: sub_query)
-    end
-    
-    ethscriptions = Rails.cache.fetch(["ethscription-api-filtered", scope]) do
-      scope.to_a
-    end
-    
-    render json: {
-      result: ethscriptions
     }
   end
 end

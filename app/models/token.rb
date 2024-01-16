@@ -42,7 +42,7 @@ class Token < ApplicationRecord
   end
   
   def sync_token_items!
-    # return if minted_out?
+    return if minted_out?
     
     unless tick =~ /\A[[:alnum:]\p{Emoji_Presentation}]+\z/
       raise "Invalid tick format: #{tick.inspect}"

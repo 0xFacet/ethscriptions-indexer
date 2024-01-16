@@ -12,7 +12,7 @@ class EthscriptionTransfersController < ApplicationController
     scope = params[:sort_order]&.downcase == "asc" ? scope.oldest_first : scope.newest_first
     
     render json: {
-      result: scope
+      result: numbers_to_strings(scope)
     }
   end
 end

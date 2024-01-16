@@ -6,7 +6,7 @@ class TokensController < ApplicationController
     scope = Token.all.page(page).per(per_page)
     
     tokens = Rails.cache.fetch(["tokens-api-all", scope]) do
-      scope.to_a
+      numbers_to_strings(scope.to_a)
     end
     
     render json: {
@@ -18,7 +18,7 @@ class TokensController < ApplicationController
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
     
     render json: {
-      result: token.balances(params[:as_of_block_number]&.to_i)
+      result: numbers_to_strings(token.balances(params[:as_of_block_number]&.to_i))
     }
   end
   
@@ -31,7 +31,7 @@ class TokensController < ApplicationController
     )
     
     render json: {
-      result: balance.to_s
+      result: numbers_to_strings(balance.to_s)
     }
   end
   
@@ -39,7 +39,7 @@ class TokensController < ApplicationController
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
     
     render json: {
-      result: token.balances_observations
+      result: numbers_to_strings(token.balances_observations)
     }
   end
   
@@ -54,12 +54,14 @@ class TokensController < ApplicationController
     
     invalid_tx_hashes = tx_hashes.sort - valid_tx_hashes.sort
     
+    res = {
+      valid: valid_tx_hashes,
+      invalid: invalid_tx_hashes,
+      token_items_checksum: token.token_items_checksum
+    }
+    
     render json: {
-      result: {
-        valid: valid_tx_hashes,
-        invalid: invalid_tx_hashes,
-        token_items_checksum: token.token_items_checksum
-      }
+      result: numbers_to_strings(res)
     }
   end
 end

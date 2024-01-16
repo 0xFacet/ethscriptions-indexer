@@ -34,7 +34,7 @@ class EthscriptionsController < ApplicationController
     end
     
     ethscriptions = Rails.cache.fetch(["ethscription-api-all", scope]) do
-      scope.to_a
+      numbers_to_strings(scope.to_a)
     end
     
     render json: {
@@ -61,7 +61,7 @@ class EthscriptionsController < ApplicationController
     end
     
     render json: {
-      result: ethscription.as_json(include_transfers: true)
+      result: numbers_to_strings(ethscription.as_json(include_transfers: true))
     }
   end
   

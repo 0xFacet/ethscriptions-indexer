@@ -22,7 +22,10 @@ module Clockwork
   end
 
   every(12.seconds, 'sync_token_info') do
-    Token.batch_token_item_sync
     Token.batch_balance_snapshot
+  end
+  
+  every(5.minutes, 'batch_token_item_sync') do
+    Token.batch_token_item_sync
   end
 end

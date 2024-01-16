@@ -4,19 +4,19 @@ class CreateTokens < ActiveRecord::Migration[7.1]
       t.string :deploy_ethscription_transaction_hash, null: false
       t.bigint :deploy_block_number, null: false
       t.bigint :deploy_transaction_index, null: false
-      t.string :protocol, null: false
-      t.string :tick, null: false
+      t.string :protocol, null: false, limit: Token::MAX_PROTOCOL_LENGTH
+      t.string :tick, null: false, limit: Token::MAX_TICK_LENGTH
       t.bigint :max_supply, null: false
       t.bigint :total_supply, null: false, default: 0
       t.bigint :mint_amount, null: false
-      t.jsonb :balances, null: false, default: {}
+      t.jsonb :balances_observations, null: false, default: []
       
       t.index :deploy_ethscription_transaction_hash, unique: true
       t.index [:protocol, :tick], unique: true
       t.index [:deploy_block_number, :deploy_transaction_index], unique: true
       
-      t.check_constraint "protocol ~ '^[a-z0-9\-]{1,18}$'"
-      t.check_constraint "tick ~ '^[a-zA-Z0-9]{1,18}$'"
+      t.check_constraint "protocol ~ '^[a-z0-9\-]+$'"
+      t.check_constraint "tick ~ '^[[:alnum:]\p{Emoji_Presentation}]+$'"
       t.check_constraint 'max_supply > 0'
       t.check_constraint 'total_supply >= 0'
       t.check_constraint 'total_supply <= max_supply'

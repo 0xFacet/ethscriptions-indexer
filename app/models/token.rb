@@ -1,4 +1,6 @@
 class Token < ApplicationRecord
+  MAX_PROTOCOL_LENGTH = MAX_TICK_LENGTH = 1000
+  
   has_many :token_items,
     foreign_key: :deploy_ethscription_transaction_hash,
     primary_key: :deploy_ethscription_transaction_hash,
@@ -12,6 +14,7 @@ class Token < ApplicationRecord
     optional: true
   
   scope :minted_out, -> { where("total_supply = max_supply") }
+  scope :not_minted_out, -> { where("total_supply < max_supply") }
   
   def minted_out?
     total_supply == max_supply
@@ -41,21 +44,53 @@ class Token < ApplicationRecord
   def sync_token_items!
     return if minted_out?
     
-    sanitized_tick = ActiveRecord::Base.sanitize_sql_like(tick)
+    unless tick =~ /\A[[:alnum:]\p{Emoji_Presentation}]+\z/
+      raise "Invalid tick format: #{tick.inspect}"
+    end
+    quoted_tick = ActiveRecord::Base.connection.quote_string(tick)
+    
+    unless protocol =~ /\A[a-z0-9\-]+\z/
+      raise "Invalid protocol format: #{protocol.inspect}"
+    end
+    quoted_protocol = ActiveRecord::Base.connection.quote_string(protocol)
+    
     trailing_digit_count = max_id.to_i.to_s.length - 1
 
-    regex = %Q{^data:,{"p":"#{protocol}","op":"mint","tick":"#{sanitized_tick}","id":"([1-9][0-9]{0,#{trailing_digit_count}})","amt":"#{mint_amount}"}$}
+    regex = %Q{^data:,{"p":"#{quoted_protocol}","op":"mint","tick":"#{quoted_tick}","id":"([1-9][0-9]{0,#{trailing_digit_count}})","amt":"#{mint_amount.to_i}"}$}
 
-    sql = %Q{
-      INSERT INTO token_items (ethscription_transaction_hash, deploy_ethscription_transaction_hash, token_item_id, created_at, updated_at)
-      SELECT e.transaction_hash, '#{deploy_ethscription_transaction_hash}', (substring(e.content_uri from '#{regex}')::integer), NOW(), NOW()
-      FROM ethscriptions e
-      INNER JOIN ethscriptions d ON d.transaction_hash = '#{deploy_ethscription_transaction_hash}'
-      WHERE e.content_uri ~ '#{regex}'
-      AND substring(e.content_uri from '#{regex}')::integer BETWEEN 1 AND #{max_id}
-      AND (e.block_number > d.block_number OR (e.block_number = d.block_number AND e.transaction_index > d.transaction_index))
-      ON CONFLICT (ethscription_transaction_hash, deploy_ethscription_transaction_hash, token_item_id) DO NOTHING
-    }
+    deploy_ethscription = Ethscription.find_by(
+      transaction_hash: deploy_ethscription_transaction_hash
+    )
+    
+    sql = <<-SQL
+      INSERT INTO token_items (
+        ethscription_transaction_hash, 
+        deploy_ethscription_transaction_hash, 
+        token_item_id, 
+        created_at, 
+        updated_at
+      )
+      SELECT 
+        e.transaction_hash, 
+        '#{deploy_ethscription_transaction_hash}', 
+        (substring(e.content_uri from '#{regex}')::integer), 
+        NOW(), 
+        NOW()
+      FROM 
+        ethscriptions e
+      WHERE 
+        e.content_uri ~ '#{regex}' AND
+        substring(e.content_uri from '#{regex}')::integer BETWEEN 1 AND #{max_id} AND
+        (
+          e.block_number > #{deploy_ethscription.block_number} OR 
+          (
+            e.block_number = #{deploy_ethscription.block_number} AND 
+            e.transaction_index > #{deploy_ethscription.transaction_index}
+          )
+        )
+      ON CONFLICT (ethscription_transaction_hash, deploy_ethscription_transaction_hash, token_item_id) 
+      DO NOTHING
+    SQL
 
     Token.transaction do
       ActiveRecord::Base.connection.execute(sql)
@@ -76,7 +111,7 @@ class Token < ApplicationRecord
     end
   end
   
-  def take_holders_snapshot
+  def take_balances_snapshot
     with_lock do
       balance_map, latest_block_number, latest_block_hash = token_balances
       
@@ -84,29 +119,39 @@ class Token < ApplicationRecord
         balances: balance_map,
         as_of_block_number: latest_block_number,
         as_of_blockhash: latest_block_hash
-      }
-      
-      update!(balances: snapshot)
+      }.with_indifferent_access
+  
+      existing_snapshot = balances_observations.find { |b| b['as_of_block_number'] == latest_block_number }
+  
+      if existing_snapshot
+        return if existing_snapshot['as_of_blockhash'] == latest_block_hash
+  
+        balances_observations.delete(existing_snapshot)
+      end
+  
+      balances_observations.unshift(snapshot)
+  
+      balances_observations.pop if balances_observations.size > 5
+  
+      update!(balances_observations: balances_observations)
     end
-  end
-    
-  def safe_balances(max_blocks_behind = nil)
-    return {} unless EthBlock.exists?(
-      block_number: balances['as_of_block_number'],
-      blockhash: balances['as_of_blockhash']
-    )
-    
-    blocks_behind = EthBlock.cached_global_block_number - balances['as_of_block_number']
-    
-    if max_blocks_behind && blocks_behind > max_blocks_behind
-      return {}
-    end
-    
-    balances['balances']
   end
   
-  def balance_of(user, max_blocks_behind = nil)
-    safe_balances(max_blocks_behind)[user]
+  def balances_observation(as_of_block_number = nil)
+    if as_of_block_number
+      snapshot = balances_observations.detect { |b| b['as_of_block_number'] == as_of_block_number }
+      return snapshot || {}
+    end
+  
+    balances_observations.first || {}
+  end
+  
+  def balances(as_of_block_number = nil)
+    balances_observation(as_of_block_number)['balances']
+  end
+  
+  def balance_of(address:, as_of_block_number: nil)
+    balances_observation(as_of_block_number)['balances'][address]
   end
   
   def token_balances
@@ -167,14 +212,22 @@ class Token < ApplicationRecord
   
   def self.batch_balance_snapshot
     all.find_each do |token|
-      token.delay.take_holders_snapshot
+      token.take_balances_snapshot_no_duplicate_jobs
     end
   end
   
   def self.batch_token_item_sync
-    all.find_each do |token|
+    not_minted_out.find_each do |token|
       token.delay.sync_token_items!
     end
+  end
+  
+  def take_balances_snapshot_no_duplicate_jobs
+    return if Delayed::Job.
+    where("handler LIKE ?", "%method_name: :take_balances_snapshot%").
+    where("handler ~ ?", ".*name: id\\s+value_before_type_cast: #{id}.*").exists?
+
+    delay.take_balances_snapshot
   end
   
   def self.find_deploy_transaction(tick:, p:, max:, lim:)    
@@ -184,6 +237,15 @@ class Token < ApplicationRecord
   end
   
   def as_json(options = {})
-    super(options.merge(except: [:balances]))
+    super(options.merge(except: [:balances_observations]))
+  end
+  
+  def self.import_test
+    Token.create_from_token_details!(tick: "eths", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
+    Token.create_from_token_details!(tick: "Facet", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
+    Token.create_from_token_details!(tick: "gwei", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
+    Token.create_from_token_details!(tick: "mfpurrs", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
+    Token.create_from_token_details!(tick: "dumb", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
+    Token.create_from_token_details!(tick: "nodes", p: "erc-20", max: 10000000000, lim: 10000).sync_token_items!
   end
 end

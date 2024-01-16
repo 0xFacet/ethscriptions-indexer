@@ -42,7 +42,7 @@ class Token < ApplicationRecord
   end
   
   def sync_token_items!
-    return if minted_out?
+    # return if minted_out?
     
     unless tick =~ /\A[[:alnum:]\p{Emoji_Presentation}]+\z/
       raise "Invalid tick format: #{tick.inspect}"
@@ -58,16 +58,39 @@ class Token < ApplicationRecord
 
     regex = %Q{^data:,{"p":"#{quoted_protocol}","op":"mint","tick":"#{quoted_tick}","id":"([1-9][0-9]{0,#{trailing_digit_count}})","amt":"#{mint_amount.to_i}"}$}
 
-    sql = %Q{
-      INSERT INTO token_items (ethscription_transaction_hash, deploy_ethscription_transaction_hash, token_item_id, created_at, updated_at)
-      SELECT e.transaction_hash, '#{deploy_ethscription_transaction_hash}', (substring(e.content_uri from '#{regex}')::integer), NOW(), NOW()
-      FROM ethscriptions e
-      INNER JOIN ethscriptions d ON d.transaction_hash = '#{deploy_ethscription_transaction_hash}'
-      WHERE e.content_uri ~ '#{regex}'
-      AND substring(e.content_uri from '#{regex}')::integer BETWEEN 1 AND #{max_id}
-      AND (e.block_number > d.block_number OR (e.block_number = d.block_number AND e.transaction_index > d.transaction_index))
-      ON CONFLICT (ethscription_transaction_hash, deploy_ethscription_transaction_hash, token_item_id) DO NOTHING
-    }
+    deploy_ethscription = Ethscription.find_by(
+      transaction_hash: deploy_ethscription_transaction_hash
+    )
+    
+    sql = <<-SQL
+      INSERT INTO token_items (
+        ethscription_transaction_hash, 
+        deploy_ethscription_transaction_hash, 
+        token_item_id, 
+        created_at, 
+        updated_at
+      )
+      SELECT 
+        e.transaction_hash, 
+        '#{deploy_ethscription_transaction_hash}', 
+        (substring(e.content_uri from '#{regex}')::integer), 
+        NOW(), 
+        NOW()
+      FROM 
+        ethscriptions e
+      WHERE 
+        e.content_uri ~ '#{regex}' AND
+        substring(e.content_uri from '#{regex}')::integer BETWEEN 1 AND #{max_id} AND
+        (
+          e.block_number > #{deploy_ethscription.block_number} OR 
+          (
+            e.block_number = #{deploy_ethscription.block_number} AND 
+            e.transaction_index > #{deploy_ethscription.transaction_index}
+          )
+        )
+      ON CONFLICT (ethscription_transaction_hash, deploy_ethscription_transaction_hash, token_item_id) 
+      DO NOTHING
+    SQL
 
     Token.transaction do
       ActiveRecord::Base.connection.execute(sql)

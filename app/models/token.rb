@@ -88,7 +88,7 @@ class Token < ApplicationRecord
     end
   end
   
-  def take_holders_snapshot
+  def take_balances_snapshot
     with_lock do
       balance_map, latest_block_number, latest_block_hash = token_balances
       
@@ -96,29 +96,39 @@ class Token < ApplicationRecord
         balances: balance_map,
         as_of_block_number: latest_block_number,
         as_of_blockhash: latest_block_hash
-      }
-      
-      update!(balances: snapshot)
+      }.with_indifferent_access
+  
+      existing_snapshot = balances_observations.find { |b| b['as_of_block_number'] == latest_block_number }
+  
+      if existing_snapshot
+        return if existing_snapshot['as_of_blockhash'] == latest_block_hash
+  
+        balances_observations.delete(existing_snapshot)
+      end
+  
+      balances_observations.unshift(snapshot)
+  
+      balances_observations.pop if balances_observations.size > 5
+  
+      update!(balances_observations: balances_observations)
     end
-  end
-    
-  def safe_balances(max_blocks_behind = nil)
-    return {} unless EthBlock.exists?(
-      block_number: balances['as_of_block_number'],
-      blockhash: balances['as_of_blockhash']
-    )
-    
-    blocks_behind = EthBlock.cached_global_block_number - balances['as_of_block_number']
-    
-    if max_blocks_behind && blocks_behind > max_blocks_behind
-      return {}
-    end
-    
-    balances['balances']
   end
   
-  def balance_of(user, max_blocks_behind = nil)
-    safe_balances(max_blocks_behind)[user]
+  def balances_observation(as_of_block_number = nil)
+    if as_of_block_number
+      snapshot = balances_observations.detect { |b| b['as_of_block_number'] == as_of_block_number }
+      return snapshot || {}
+    end
+  
+    balances_observations.first || {}
+  end
+  
+  def balances(as_of_block_number = nil)
+    balances_observation(as_of_block_number)['balances']
+  end
+  
+  def balance_of(address:, as_of_block_number: nil)
+    balances_observation(as_of_block_number)['balances'][address]
   end
   
   def token_balances
@@ -179,7 +189,7 @@ class Token < ApplicationRecord
   
   def self.batch_balance_snapshot
     all.find_each do |token|
-      token.take_holders_snapshot_no_duplicate_jobs
+      token.take_balances_snapshot_no_duplicate_jobs
     end
   end
   
@@ -189,12 +199,12 @@ class Token < ApplicationRecord
     end
   end
   
-  def take_holders_snapshot_no_duplicate_jobs
+  def take_balances_snapshot_no_duplicate_jobs
     return if Delayed::Job.
-    where("handler LIKE ?", "%method_name: :take_holders_snapshot%").
+    where("handler LIKE ?", "%method_name: :take_balances_snapshot%").
     where("handler ~ ?", ".*name: id\\s+value_before_type_cast: #{id}.*").exists?
 
-    delay.take_holders_snapshot
+    delay.take_balances_snapshot
   end
   
   def self.find_deploy_transaction(tick:, p:, max:, lim:)    
@@ -204,7 +214,7 @@ class Token < ApplicationRecord
   end
   
   def as_json(options = {})
-    super(options.merge(except: [:balances]))
+    super(options.merge(except: [:balances_observations]))
   end
   
   def self.import_test

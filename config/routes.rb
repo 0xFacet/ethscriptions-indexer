@@ -20,7 +20,8 @@ Rails.application.routes.draw do
     resources :tokens, only: [:index] do
       collection do
         get "/balance_of", to: "tokens#balance_of"
-        get "/holders", to: "tokens#holders"
+        get "/balances", to: "tokens#balances"
+        get "/balances_observations", to: "tokens#balances_observations"
         get "/validate_token_items", to: "tokens#validate_token_items"
       end
     end

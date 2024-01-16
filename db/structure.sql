@@ -571,7 +571,7 @@ CREATE TABLE public.tokens (
     max_supply bigint NOT NULL,
     total_supply bigint DEFAULT 0 NOT NULL,
     mint_amount bigint NOT NULL,
-    balances jsonb DEFAULT '{}'::jsonb NOT NULL,
+    balances_observations jsonb DEFAULT '[]'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_31c1808af4 CHECK (((tick)::text ~ '^[[:alnum:]p{Emoji_Presentation}]+$'::text)),

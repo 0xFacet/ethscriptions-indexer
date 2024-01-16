@@ -9,7 +9,7 @@ class CreateTokens < ActiveRecord::Migration[7.1]
       t.bigint :max_supply, null: false
       t.bigint :total_supply, null: false, default: 0
       t.bigint :mint_amount, null: false
-      t.jsonb :balances, null: false, default: {}
+      t.jsonb :balances_observations, null: false, default: []
       
       t.index :deploy_ethscription_transaction_hash, unique: true
       t.index [:protocol, :tick], unique: true

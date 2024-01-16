@@ -184,8 +184,8 @@ class EthscriptionsController < ApplicationController
     per_page = (params[:per_page] || 25).to_i.clamp(1, 50)
     
     current_owners = parse_param_array(params[:current_owner])
-    token_tick = parse_param_array(params[:token_tick])&.first
-    token_protocol = parse_param_array(params[:token_protocol])&.first
+    token_tick = parse_param_array(params[:token_tick]).first
+    token_protocol = parse_param_array(params[:token_protocol]).first
     transferred_in_tx = parse_param_array(params[:transferred_in_tx])
 
     scope = Ethscription.all.page(page).per(per_page)
@@ -208,15 +208,5 @@ class EthscriptionsController < ApplicationController
     render json: {
       result: ethscriptions
     }
-  end
-  
-  private
-  
-  def parse_param_array(param, limit: 100)
-    return if param.blank?
-    
-    Array(JSON.parse(param)).map{|i| i.to_s.downcase}.uniq.take(limit)
-  rescue JSON::ParserError, TypeError
-    Array(param.downcase)
   end
 end

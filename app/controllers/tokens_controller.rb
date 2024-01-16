@@ -46,11 +46,13 @@ class TokensController < ApplicationController
   def validate_token_items
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
 
+    tx_hashes = parse_param_array(params[:transaction_hashes])
+    
     valid_tx_hashes = token.token_items.where(
-      ethscription_transaction_hash: params[:transaction_hashes]
+      ethscription_transaction_hash: tx_hashes
     ).pluck(:ethscription_transaction_hash)
     
-    invalid_tx_hashes = params[:transaction_hashes].sort - valid_tx_hashes.sort
+    invalid_tx_hashes = tx_hashes.sort - valid_tx_hashes.sort
     
     render json: {
       result: {

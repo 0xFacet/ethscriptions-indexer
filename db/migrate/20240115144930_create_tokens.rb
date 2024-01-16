@@ -16,7 +16,7 @@ class CreateTokens < ActiveRecord::Migration[7.1]
       t.index [:deploy_block_number, :deploy_transaction_index], unique: true
       
       t.check_constraint "protocol ~ '^[a-z0-9\-]{1,18}$'"
-      t.check_constraint "tick ~ '^[a-zA-Z0-9]{1,18}$'"
+      t.check_constraint "tick ~ '^[[:alnum:]\p{Emoji_Presentation}]{1,18}$'"
       t.check_constraint 'max_supply > 0'
       t.check_constraint 'total_supply >= 0'
       t.check_constraint 'total_supply <= max_supply'

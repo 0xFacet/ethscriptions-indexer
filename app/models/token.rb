@@ -1,4 +1,6 @@
 class Token < ApplicationRecord
+  MAX_PROTOCOL_LENGTH = MAX_TICK_LENGTH = 1000
+  
   has_many :token_items,
     foreign_key: :deploy_ethscription_transaction_hash,
     primary_key: :deploy_ethscription_transaction_hash,
@@ -42,10 +44,19 @@ class Token < ApplicationRecord
   def sync_token_items!
     return if minted_out?
     
-    sanitized_tick = ActiveRecord::Base.sanitize_sql_like(tick)
+    unless tick =~ /\A[[:alnum:]\p{Emoji_Presentation}]+\z/
+      raise "Invalid tick format: #{tick.inspect}"
+    end
+    quoted_tick = ActiveRecord::Base.connection.quote_string(tick)
+    
+    unless protocol =~ /\A[a-z0-9\-]+\z/
+      raise "Invalid protocol format: #{protocol.inspect}"
+    end
+    quoted_protocol = ActiveRecord::Base.connection.quote_string(protocol)
+    
     trailing_digit_count = max_id.to_i.to_s.length - 1
 
-    regex = %Q{^data:,{"p":"#{protocol}","op":"mint","tick":"#{sanitized_tick}","id":"([1-9][0-9]{0,#{trailing_digit_count}})","amt":"#{mint_amount}"}$}
+    regex = %Q{^data:,{"p":"#{quoted_protocol}","op":"mint","tick":"#{quoted_tick}","id":"([1-9][0-9]{0,#{trailing_digit_count}})","amt":"#{mint_amount.to_i}"}$}
 
     sql = %Q{
       INSERT INTO token_items (ethscription_transaction_hash, deploy_ethscription_transaction_hash, token_item_id, created_at, updated_at)
@@ -194,5 +205,14 @@ class Token < ApplicationRecord
   
   def as_json(options = {})
     super(options.merge(except: [:balances]))
+  end
+  
+  def self.import_test
+    Token.create_from_token_details!(tick: "eths", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
+    Token.create_from_token_details!(tick: "Facet", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
+    Token.create_from_token_details!(tick: "gwei", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
+    Token.create_from_token_details!(tick: "mfpurrs", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
+    Token.create_from_token_details!(tick: "dumb", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
+    Token.create_from_token_details!(tick: "nodes", p: "erc-20", max: 10000000000, lim: 10000).sync_token_items!
   end
 end

@@ -566,22 +566,22 @@ CREATE TABLE public.tokens (
     deploy_ethscription_transaction_hash character varying NOT NULL,
     deploy_block_number bigint NOT NULL,
     deploy_transaction_index bigint NOT NULL,
-    protocol character varying NOT NULL,
-    tick character varying NOT NULL,
+    protocol character varying(1000) NOT NULL,
+    tick character varying(1000) NOT NULL,
     max_supply bigint NOT NULL,
     total_supply bigint DEFAULT 0 NOT NULL,
     mint_amount bigint NOT NULL,
     balances jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_rails_31c1808af4 CHECK (((tick)::text ~ '^[[:alnum:]p{Emoji_Presentation}]+$'::text)),
     CONSTRAINT chk_rails_3458514b65 CHECK (((deploy_ethscription_transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_3d55d7040f CHECK (((max_supply % mint_amount) = 0)),
     CONSTRAINT chk_rails_53ece3f224 CHECK ((total_supply <= max_supply)),
     CONSTRAINT chk_rails_596664ed3b CHECK ((total_supply >= 0)),
-    CONSTRAINT chk_rails_656ef5c2e5 CHECK (((tick)::text ~ '^[a-zA-Z0-9]{1,18}$'::text)),
     CONSTRAINT chk_rails_b41faadd12 CHECK ((mint_amount > 0)),
-    CONSTRAINT chk_rails_d3c8f232c1 CHECK (((protocol)::text ~ '^[a-z0-9-]{1,18}$'::text)),
-    CONSTRAINT chk_rails_e954152758 CHECK ((max_supply > 0))
+    CONSTRAINT chk_rails_e954152758 CHECK ((max_supply > 0)),
+    CONSTRAINT chk_rails_f38f6eac6d CHECK (((protocol)::text ~ '^[a-z0-9-]+$'::text))
 );
 
 

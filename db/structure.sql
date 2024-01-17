@@ -10,6 +10,34 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: heroku_ext; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA heroku_ext;
+
+
+--
+-- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON SCHEMA public IS '';
+
+
+--
+-- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA heroku_ext;
+
+
+--
+-- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
+
+
+--
 -- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
 --
 
@@ -77,19 +105,20 @@ CREATE FUNCTION public.check_block_order() RETURNS trigger
 CREATE FUNCTION public.check_block_order_on_update() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
-BEGIN
-  IF NEW.imported_at IS NOT NULL AND NEW.state_hash IS NULL THEN
-    RAISE EXCEPTION 'state_hash must be set when imported_at is set';
-  END IF;
-
-  IF NEW.is_genesis_block = false AND 
-    NEW.parent_state_hash <> (SELECT state_hash FROM eth_blocks WHERE block_number = NEW.block_number - 1 AND imported_at IS NOT NULL) THEN
-    RAISE EXCEPTION 'Parent state hash does not match the state hash of the previous block';
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
+      BEGIN
+        IF NEW.imported_at IS NOT NULL AND NEW.state_hash IS NULL THEN
+          RAISE EXCEPTION 'state_hash must be set when imported_at is set';
+        END IF;
+      
+        IF (SELECT MAX(block_number) FROM eth_blocks) IS NOT NULL THEN
+          IF NEW.parent_state_hash <> (SELECT state_hash FROM eth_blocks WHERE block_number = (SELECT MAX(block_number) FROM eth_blocks WHERE block_number < NEW.block_number) AND imported_at IS NOT NULL) THEN
+            RAISE EXCEPTION 'Parent state hash does not match the state hash of the previous block';
+          END IF;
+        END IF;
+      
+        RETURN NEW;
+      END;
+      $$;
 
 
 --
@@ -166,6 +195,27 @@ CREATE FUNCTION public.update_current_owner() RETURNS trigger
           $$;
 
 
+--
+-- Name: update_total_supply(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_total_supply() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+      BEGIN
+        UPDATE tokens
+        SET total_supply = (
+          SELECT COUNT(*) * mint_amount
+          FROM token_items
+          WHERE deploy_ethscription_transaction_hash = NEW.deploy_ethscription_transaction_hash
+        )
+        WHERE deploy_ethscription_transaction_hash = NEW.deploy_ethscription_transaction_hash;
+
+        RETURN NEW;
+      END;
+      $$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -180,6 +230,45 @@ CREATE TABLE public.ar_internal_metadata (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+
+--
+-- Name: delayed_jobs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.delayed_jobs (
+    id bigint NOT NULL,
+    priority integer DEFAULT 0 NOT NULL,
+    attempts integer DEFAULT 0 NOT NULL,
+    handler text NOT NULL,
+    last_error text,
+    run_at timestamp(6) without time zone,
+    locked_at timestamp(6) without time zone,
+    failed_at timestamp(6) without time zone,
+    locked_by character varying,
+    queue character varying,
+    created_at timestamp(6) without time zone,
+    updated_at timestamp(6) without time zone
+);
+
+
+--
+-- Name: delayed_jobs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.delayed_jobs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: delayed_jobs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.delayed_jobs_id_seq OWNED BY public.delayed_jobs.id;
 
 
 --
@@ -434,6 +523,96 @@ CREATE TABLE public.schema_migrations (
 
 
 --
+-- Name: token_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.token_items (
+    id bigint NOT NULL,
+    ethscription_transaction_hash character varying NOT NULL,
+    deploy_ethscription_transaction_hash character varying NOT NULL,
+    token_item_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_rails_37f43f9259 CHECK (((deploy_ethscription_transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
+    CONSTRAINT chk_rails_4a492d2c53 CHECK ((token_item_id > 0)),
+    CONSTRAINT chk_rails_4e045edbe2 CHECK (((ethscription_transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text))
+);
+
+
+--
+-- Name: token_items_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.token_items_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: token_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.token_items_id_seq OWNED BY public.token_items.id;
+
+
+--
+-- Name: tokens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tokens (
+    id bigint NOT NULL,
+    deploy_ethscription_transaction_hash character varying NOT NULL,
+    deploy_block_number bigint NOT NULL,
+    deploy_transaction_index bigint NOT NULL,
+    protocol character varying(1000) NOT NULL,
+    tick character varying(1000) NOT NULL,
+    max_supply bigint NOT NULL,
+    total_supply bigint DEFAULT 0 NOT NULL,
+    mint_amount bigint NOT NULL,
+    balances_observations jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT chk_rails_31c1808af4 CHECK (((tick)::text ~ '^[[:alnum:]p{Emoji_Presentation}]+$'::text)),
+    CONSTRAINT chk_rails_3458514b65 CHECK (((deploy_ethscription_transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
+    CONSTRAINT chk_rails_3d55d7040f CHECK (((max_supply % mint_amount) = 0)),
+    CONSTRAINT chk_rails_53ece3f224 CHECK ((total_supply <= max_supply)),
+    CONSTRAINT chk_rails_596664ed3b CHECK ((total_supply >= 0)),
+    CONSTRAINT chk_rails_b41faadd12 CHECK ((mint_amount > 0)),
+    CONSTRAINT chk_rails_e954152758 CHECK ((max_supply > 0)),
+    CONSTRAINT chk_rails_f38f6eac6d CHECK (((protocol)::text ~ '^[a-z0-9-]+$'::text))
+);
+
+
+--
+-- Name: tokens_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.tokens_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: tokens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.tokens_id_seq OWNED BY public.tokens.id;
+
+
+--
+-- Name: delayed_jobs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.delayed_jobs ALTER COLUMN id SET DEFAULT nextval('public.delayed_jobs_id_seq'::regclass);
+
+
+--
 -- Name: eth_blocks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -469,11 +648,33 @@ ALTER TABLE ONLY public.ethscriptions ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
+-- Name: token_items id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.token_items ALTER COLUMN id SET DEFAULT nextval('public.token_items_id_seq'::regclass);
+
+
+--
+-- Name: tokens id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tokens ALTER COLUMN id SET DEFAULT nextval('public.tokens_id_seq'::regclass);
+
+
+--
 -- Name: ar_internal_metadata ar_internal_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ar_internal_metadata
     ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: delayed_jobs delayed_jobs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.delayed_jobs
+    ADD CONSTRAINT delayed_jobs_pkey PRIMARY KEY (id);
 
 
 --
@@ -525,6 +726,29 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
+-- Name: token_items token_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.token_items
+    ADD CONSTRAINT token_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tokens tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tokens
+    ADD CONSTRAINT tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: delayed_jobs_priority; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX delayed_jobs_priority ON public.delayed_jobs USING btree (priority, run_at);
+
+
+--
 -- Name: idx_on_block_number_transaction_index_event_log_ind_94b2c4b953; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -550,6 +774,27 @@ CREATE UNIQUE INDEX idx_on_block_number_transaction_index_transfer_inde_fc9ee599
 --
 
 CREATE INDEX idx_on_current_owner_previous_owner_7bb4bbf3cf ON public.ethscription_ownership_versions USING btree (current_owner, previous_owner);
+
+
+--
+-- Name: idx_on_deploy_block_number_deploy_transaction_index_16cfcbe277; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_deploy_block_number_deploy_transaction_index_16cfcbe277 ON public.tokens USING btree (deploy_block_number, deploy_transaction_index);
+
+
+--
+-- Name: idx_on_deploy_ethscription_transaction_hash_token_i_8afe3c6082; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_deploy_ethscription_transaction_hash_token_i_8afe3c6082 ON public.token_items USING btree (deploy_ethscription_transaction_hash, token_item_id);
+
+
+--
+-- Name: idx_on_ethscription_transaction_hash_deploy_ethscri_5f2ffeede2; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_ethscription_transaction_hash_deploy_ethscri_5f2ffeede2 ON public.token_items USING btree (ethscription_transaction_hash, deploy_ethscription_transaction_hash, token_item_id);
 
 
 --
@@ -987,6 +1232,27 @@ CREATE INDEX index_ethscriptions_on_updated_at ON public.ethscriptions USING btr
 
 
 --
+-- Name: index_token_items_on_ethscription_transaction_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_token_items_on_ethscription_transaction_hash ON public.token_items USING btree (ethscription_transaction_hash);
+
+
+--
+-- Name: index_tokens_on_deploy_ethscription_transaction_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_tokens_on_deploy_ethscription_transaction_hash ON public.tokens USING btree (deploy_ethscription_transaction_hash);
+
+
+--
+-- Name: index_tokens_on_protocol_and_tick; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_tokens_on_protocol_and_tick ON public.tokens USING btree (protocol, tick);
+
+
+--
 -- Name: eth_blocks check_block_imported_at_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -1029,11 +1295,26 @@ CREATE TRIGGER update_current_owner AFTER INSERT OR DELETE ON public.ethscriptio
 
 
 --
+-- Name: token_items update_total_supply_trigger; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_total_supply_trigger AFTER DELETE ON public.token_items FOR EACH ROW EXECUTE FUNCTION public.update_total_supply();
+
+
+--
 -- Name: ethscriptions fk_rails_104cee2b3d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ethscriptions
     ADD CONSTRAINT fk_rails_104cee2b3d FOREIGN KEY (block_number) REFERENCES public.eth_blocks(block_number) ON DELETE CASCADE;
+
+
+--
+-- Name: tokens fk_rails_1c09e75f12; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tokens
+    ADD CONSTRAINT fk_rails_1c09e75f12 FOREIGN KEY (deploy_ethscription_transaction_hash) REFERENCES public.ethscriptions(transaction_hash) ON DELETE CASCADE;
 
 
 --
@@ -1077,6 +1358,14 @@ ALTER TABLE ONLY public.ethscription_ownership_versions
 
 
 --
+-- Name: token_items fk_rails_8d58f29890; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.token_items
+    ADD CONSTRAINT fk_rails_8d58f29890 FOREIGN KEY (deploy_ethscription_transaction_hash) REFERENCES public.tokens(deploy_ethscription_transaction_hash) ON DELETE CASCADE;
+
+
+--
 -- Name: ethscription_transfers fk_rails_b68511af4b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1101,12 +1390,24 @@ ALTER TABLE ONLY public.ethscription_ownership_versions
 
 
 --
+-- Name: token_items fk_rails_ffdbb769e4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.token_items
+    ADD CONSTRAINT fk_rails_ffdbb769e4 FOREIGN KEY (ethscription_transaction_hash) REFERENCES public.ethscriptions(transaction_hash) ON DELETE CASCADE;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20240117145543'),
+('20240115192312'),
+('20240115151119'),
+('20240115144930'),
 ('20231216215348'),
 ('20231216213103'),
 ('20231216164707'),

@@ -16,7 +16,7 @@ class EthBlock < ApplicationRecord
   scope :newest_first, -> { order(block_number: :desc) }
   scope :oldest_first, -> { order(block_number: :asc) }
   
-  before_validation :generate_attestation_hash, if: -> { imported_at.present? }
+  before_validation :set_attestation_hash, if: -> { imported_at.present? }
     
   def self.ethereum_client
     @_ethereum_client ||= begin
@@ -226,41 +226,88 @@ class EthBlock < ApplicationRecord
     (max_db_block + 1..max_db_block + n).to_a
   end
   
-  def generate_attestation_hash
+  def calculate_attestation_hash
     hash = Digest::SHA256.new
-    
-    self.parent_state_hash = EthBlock.where(block_number: block_number - 1).
+  
+    parent_block_number = if is_genesis_block?
+      self.class.genesis_blocks.select { |b| b < block_number }.max
+    else
+      block_number - 1
+    end
+  
+    parent_state_hash = EthBlock.where(block_number: parent_block_number).
       limit(1).pluck(:state_hash).first
-    
+  
     hash << parent_state_hash.to_s
-    
+  
     hash << hashable_attributes.map do |attr|
       send(attr)
     end.to_json
-
+  
     associations_to_hash.each do |association|
       hashable_attributes = quoted_hashable_attributes(association.klass)
       records = association_scope(association).pluck(*hashable_attributes)
-
+  
       hash << records.to_json
     end
-
-    self.state_hash = "0x" + hash.hexdigest
+    
+    {
+      state_hash: "0x" + hash.hexdigest,
+      parent_state_hash: parent_state_hash
+    }
+  end
+  
+  def self.recalculate_all_state_hashes
+    total_blocks = EthBlock.count
+    processed_blocks = 0
+  
+    associations = associations_to_hash.map(&:name)
+    EthBlock.includes(*associations).find_each do |block|
+      res = block.calculate_attestation_hash
+      block.update_columns(state_hash: res[:state_hash], parent_state_hash: res[:parent_state_hash])
+  
+      processed_blocks += 1
+      print "\rProgress: #{processed_blocks}/#{total_blocks} blocks recalculated."
+    end
+    puts
+  end
+  
+  def self.verify_all_state_hashes
+    total_blocks = EthBlock.count
+    processed_blocks = 0
+    previous_block = nil
+  
+    associations = associations_to_hash.map(&:name)
+    EthBlock.includes(*associations).find_each do |block|
+      res = block.calculate_attestation_hash
+      
+      if res[:state_hash] != block.state_hash
+        raise "Mismatched state hash for block #{block.block_number}. Expected: #{block.state_hash}, got: #{computed_hash}"
+      elsif block.block_number != genesis_blocks.first && res[:parent_state_hash] != previous_block&.state_hash
+        actual = previous_block&.state_hash
+        expected = parent_state_hash
+        raise "Mismatched parent state hash for block #{block.block_number}. Actual: #{actual}, expected: #{expected}"
+      end
+  
+      processed_blocks += 1
+      print "\rProgress: #{processed_blocks}/#{total_blocks} blocks verified."
+  
+      previous_block = block
+    end
+    puts
+  end
+  
+  def set_attestation_hash
+    res = calculate_attestation_hash
+    
+    self.state_hash = res[:state_hash]
+    self.parent_state_hash = res[:parent_state_hash]
   end
   
   delegate :quoted_hashable_attributes, :associations_to_hash, to: :class
 
   def hashable_attributes
     self.class.hashable_attributes(self.class)
-  end
-  
-  def check_attestation_hash
-    current_hash = state_hash
-    
-    current_hash == generate_attestation_hash &&
-    parent_state_hash == EthBlock.find_by(block_number: block_number - 1)&.generate_attestation_hash
-  ensure
-    self.state_hash = current_hash
   end
 
   def association_scope(association)

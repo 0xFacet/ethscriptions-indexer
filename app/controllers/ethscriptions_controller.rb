@@ -1,7 +1,6 @@
 class EthscriptionsController < ApplicationController
   def index
-    page = (params[:page] || 1).to_i.clamp(1, 10)
-    per_page = (params[:per_page] || 25).to_i.clamp(1, 50)
+    page, per_page = pagination_params
     
     scope = Ethscription.all.page(page).per(per_page)
     

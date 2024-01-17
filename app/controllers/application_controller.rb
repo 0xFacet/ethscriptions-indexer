@@ -13,6 +13,31 @@ class ApplicationController < ActionController::API
     scope
   end
   
+  def pagination_params(default_page: 1, default_per_page: 25, max_page: 10, max_per_page: 50)
+    page = (params[:page] || default_page).to_i.clamp(1, max_page)
+    per_page = (params[:per_page] || default_per_page).to_i.clamp(1, max_per_page)
+
+    if authorized?
+      page = params[:page].to_i if params[:page].present?
+      per_page = params[:per_page].to_i if params[:per_page].present?
+    end
+
+    [page, per_page]
+  end
+
+  def authorized?
+    authorization_header = request.headers['Authorization']
+    return false if authorization_header.blank?
+  
+    token = authorization_header.remove('Bearer ').strip
+    stored_tokens = JSON.parse(ENV.fetch('API_AUTH_TOKEN', "[]"))
+    
+    stored_tokens.include?(token)
+  rescue JSON::ParserError
+    Airbrake.notify("Invalid API_AUTH_TOKEN format: #{ENV.fetch('API_AUTH_TOKEN', "[]")}")
+    false
+  end
+  
   def numbers_to_strings(result)
     result = result.as_json
 

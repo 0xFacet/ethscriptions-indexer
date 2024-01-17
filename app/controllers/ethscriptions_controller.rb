@@ -30,7 +30,9 @@ class EthscriptionsController < ApplicationController
     transferred_in_tx = parse_param_array(params[:transferred_in_tx])
     
     if token_tick && token_protocol
-      scope = scope.joins(:token).where(tokens: {tick: token_tick, protocol: token_protocol})
+      sq1 = Token.where(tick: token_tick, protocol: token_protocol).select(:deploy_ethscription_transaction_hash)
+      sq2 = TokenItem.where(deploy_ethscription_transaction_hash: sq1).select(:ethscription_transaction_hash)
+      scope = scope.where(transaction_hash: sq2)
     end
     
     if transferred_in_tx.present?

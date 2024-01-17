@@ -4,14 +4,17 @@ class EthscriptionTransfersController < ApplicationController
     
     scope = EthscriptionTransfer.all.page(page).per(per_page)
     
-    scope = scope.where(from_address: parse_param_array(params[:from])) if params[:from].present?
-    scope = scope.where(to_address: parse_param_array(params[:to])) if params[:to].present?
-    scope = scope.where(transaction_hash: parse_param_array(params[:transaction_hash])) if params[:transaction_hash].present?
+    scope = filter_by_params(scope,
+      :from_address,
+      :to_address,
+      :transaction_hash
+    )
     
     scope = params[:sort_order]&.downcase == "asc" ? scope.oldest_first : scope.newest_first
     
     render json: {
-      result: numbers_to_strings(scope)
+      result: numbers_to_strings(scope),
+      total_count: scope.total_count
     }
   end
 end

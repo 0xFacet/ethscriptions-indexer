@@ -19,6 +19,12 @@ class EthscriptionsController < ApplicationController
       :ethscription_number
     )
 
+    include_latest_transfer = params[:include_latest_transfer].present? && authorized?
+    
+    if include_latest_transfer
+      scope = scope.includes(:ethscription_transfers)
+    end
+    
     token_tick = parse_param_array(params[:token_tick]).first
     token_protocol = parse_param_array(params[:token_protocol]).first
     transferred_in_tx = parse_param_array(params[:transferred_in_tx])
@@ -32,12 +38,23 @@ class EthscriptionsController < ApplicationController
       scope = scope.where(transaction_hash: sub_query)
     end
     
-    ethscriptions = Rails.cache.fetch(["ethscription-api-all", scope]) do
-      numbers_to_strings(scope.to_a)
+    ethscriptions = Rails.cache.fetch(["ethscription-api-all", scope, include_latest_transfer]) do
+      scope.map do |ethscription|
+        if include_latest_transfer
+          ethscription.as_json.merge(
+            latest_transfer: ethscription.latest_transfer.as_json
+          )
+        else
+          ethscription
+        end
+      end
     end
     
+    ethscriptions = numbers_to_strings(ethscriptions)
+    
     render json: {
-      result: ethscriptions
+      result: ethscriptions,
+      total_count: scope.total_count
     }
   end
   

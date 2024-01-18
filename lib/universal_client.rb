@@ -64,4 +64,8 @@ class UniversalClient
       }
     }
   end
+
+  def get_block_number
+    query_api(method: 'eth_blockNumber')['result'].to_i(16)
+  end
 end

@@ -159,6 +159,8 @@ class EthTransaction < ApplicationRecord
       event_type = topics.first
       
       if event_type == Esip1EventSig
+        next if topics.length != 3
+        
         begin
           event_to = Eth::Abi.decode(['address'], topics.second).first
           tx_hash = Eth::Util.bin_to_prefixed_hex(
@@ -182,6 +184,8 @@ class EthTransaction < ApplicationRecord
           potentially_valid.create_if_valid!
         end
       elsif event_type == Esip2EventSig
+        next if topics.length != 4
+        
         begin
           event_previous_owner = Eth::Abi.decode(['address'], topics.second).first
           event_to = Eth::Abi.decode(['address'], topics.third).first

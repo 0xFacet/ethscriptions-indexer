@@ -29,7 +29,7 @@ RSpec.describe EthscriptionTransfer, type: :model do
             'topics' => [
               EthTransaction::Esip1EventSig,
               Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
-              Eth::Abi.encode(['address'], ['0x104a84b87e1e7054c48b63077b8b7ccd62de9260']).unpack1('H*'),
+              Eth::Abi.encode(['bytes32'], [ethscription.transaction_hash]).unpack1('H*'),
             ],
             'data' => Eth::Abi.encode(['bytes32'], [ethscription.transaction_hash]).unpack1('H*'),
             'logIndex' => 1.to_s(16),
@@ -174,6 +174,58 @@ RSpec.describe EthscriptionTransfer, type: :model do
       
       expect(eths.current_owner).to eq("0x8d5b48934c0c408adc25f14174c7307922f6aa60".downcase)
       expect(eths.previous_owner).to eq("0x57b8792c775D34Aa96092400983c3e112fCbC296".downcase)
+    end
+    
+    it 'ignores logs with incorrect number of topics for Esip1EventSig and Esip2EventSig' do
+      tx = EthscriptionTestHelper.create_eth_transaction(
+        input: 'data:,test',
+        from: "0xC2172a6315c1D7f6855768F843c420EbB36eDa97",
+        to: "0xC2172a6315c1D7f6855768F843c420EbB36eDa97",
+        logs: []
+      )
+    
+      ethscription = tx.ethscription
+      original_owner = ethscription.current_owner
+    
+      EthscriptionTestHelper.create_eth_transaction(
+        from: "0xC2172a6315c1D7f6855768F843c420EbB36eDa97",
+        to: "0x104a84b87e1e7054c48b63077b8b7ccd62de9260",
+        input: ethscription.transaction_hash,
+        logs: [
+          {
+            'topics' => [
+              EthTransaction::Esip1EventSig,
+              Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
+            ],
+            'data' => Eth::Abi.encode(['bytes32'], [ethscription.transaction_hash]).unpack1('H*'),
+            'logIndex' => 1.to_s(16),
+            'address' => '0x104a84b87e1e7054c48b63077b8b7ccd62de9260'
+          },
+          {
+            'topics' => [
+              EthTransaction::Esip2EventSig,
+              Eth::Abi.encode(['address'], ['0xc2172a6315c1d7f6855768f843c420ebb36eda97']).unpack1('H*'),
+            ],
+            'data' => Eth::Abi.encode(['bytes32'], [ethscription.transaction_hash]).unpack1('H*'),
+            'logIndex' => 1.to_s(16),
+            'address' => '0x104a84b87e1e7054c48b63077b8b7ccd62de9260'
+          },
+          {
+            'topics' => [
+              EthTransaction::Esip1EventSig,
+              Eth::Abi.encode(['address'], ['0x0000000000000000000000000000000000000000']).unpack1('H*'),
+              Eth::Abi.encode(['bytes32'], [ethscription.transaction_hash]).unpack1('H*'),
+            ],
+            'data' => Eth::Abi.encode(['bytes32'], [ethscription.transaction_hash]).unpack1('H*'),
+            'logIndex' => 1.to_s(16),
+            'address' => '0x104a84b87e1e7054c48b63077b8b7ccd62de9260'
+          },
+        ]
+      )
+    
+      ethscription.reload
+    
+      expect(ethscription.current_owner).to eq("0x0000000000000000000000000000000000000000")
     end
   end
 end

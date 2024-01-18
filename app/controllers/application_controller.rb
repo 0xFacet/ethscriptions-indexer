@@ -19,7 +19,7 @@ class ApplicationController < ActionController::API
     max_results = (params[:max_results] || 25).to_i.clamp(1, 50)
 
     if authorized? && params[:max_results].present?
-      max_results = params[:max_results]
+      max_results = params[:max_results].to_i
     end
     
     scope = scope.public_send(sort_order)

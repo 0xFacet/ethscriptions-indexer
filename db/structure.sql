@@ -105,19 +105,20 @@ CREATE FUNCTION public.check_block_order() RETURNS trigger
 CREATE FUNCTION public.check_block_order_on_update() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
-BEGIN
-  IF NEW.imported_at IS NOT NULL AND NEW.state_hash IS NULL THEN
-    RAISE EXCEPTION 'state_hash must be set when imported_at is set';
-  END IF;
-
-  IF NEW.is_genesis_block = false AND 
-    NEW.parent_state_hash <> (SELECT state_hash FROM eth_blocks WHERE block_number = NEW.block_number - 1 AND imported_at IS NOT NULL) THEN
-    RAISE EXCEPTION 'Parent state hash does not match the state hash of the previous block';
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
+      BEGIN
+        IF NEW.imported_at IS NOT NULL AND NEW.state_hash IS NULL THEN
+          RAISE EXCEPTION 'state_hash must be set when imported_at is set';
+        END IF;
+      
+        IF (SELECT MAX(block_number) FROM eth_blocks) IS NOT NULL THEN
+          IF NEW.parent_state_hash <> (SELECT state_hash FROM eth_blocks WHERE block_number = (SELECT MAX(block_number) FROM eth_blocks WHERE block_number < NEW.block_number) AND imported_at IS NOT NULL) THEN
+            RAISE EXCEPTION 'Parent state hash does not match the state hash of the previous block';
+          END IF;
+        END IF;
+      
+        RETURN NEW;
+      END;
+      $$;
 
 
 --
@@ -529,6 +530,8 @@ CREATE TABLE public.token_items (
     id bigint NOT NULL,
     ethscription_transaction_hash character varying NOT NULL,
     deploy_ethscription_transaction_hash character varying NOT NULL,
+    block_number bigint NOT NULL,
+    transaction_index bigint NOT NULL,
     token_item_id bigint NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
@@ -1115,7 +1118,7 @@ CREATE INDEX index_ethscriptions_on_block_number ON public.ethscriptions USING b
 -- Name: index_ethscriptions_on_block_number_and_transaction_index; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_ethscriptions_on_block_number_and_transaction_index ON public.ethscriptions USING btree (block_number, transaction_index);
+CREATE INDEX index_ethscriptions_on_block_number_and_transaction_index ON public.ethscriptions USING btree (block_number, transaction_index);
 
 
 --
@@ -1231,10 +1234,24 @@ CREATE INDEX index_ethscriptions_on_updated_at ON public.ethscriptions USING btr
 
 
 --
+-- Name: index_token_items_on_block_number_and_transaction_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_token_items_on_block_number_and_transaction_index ON public.token_items USING btree (block_number, transaction_index);
+
+
+--
 -- Name: index_token_items_on_ethscription_transaction_hash; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX index_token_items_on_ethscription_transaction_hash ON public.token_items USING btree (ethscription_transaction_hash);
+
+
+--
+-- Name: index_token_items_on_transaction_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_token_items_on_transaction_index ON public.token_items USING btree (transaction_index);
 
 
 --
@@ -1403,6 +1420,7 @@ ALTER TABLE ONLY public.token_items
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20240117145543'),
 ('20240115192312'),
 ('20240115151119'),
 ('20240115144930'),

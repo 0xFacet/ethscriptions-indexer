@@ -13,16 +13,35 @@ class ApplicationController < ActionController::API
     scope
   end
   
-  def pagination_params(default_page: 1, default_per_page: 25, max_page: 10, max_per_page: 50)
-    page = (params[:page] || default_page).to_i.clamp(1, max_page)
-    per_page = (params[:per_page] || default_per_page).to_i.clamp(1, max_per_page)
+  def paginate(scope)
+    sort_order = params[:sort_order]&.downcase == "asc" ? :oldest_first : :newest_first
 
-    if authorized?
-      page = params[:page].to_i if params[:page].present?
-      per_page = params[:per_page].to_i if params[:per_page].present?
+    max_results = (params[:max_results] || 25).to_i.clamp(1, 50)
+
+    if authorized? && params[:max_results].present?
+      max_results = params[:max_results]
+    end
+    
+    scope = scope.public_send(sort_order)
+    
+    starting_item = scope.model.find_by_page_key(params[:page_key])
+
+    if starting_item
+      scope = starting_item.public_send(sort_order, scope).after
     end
 
-    [page, per_page]
+    results = scope.limit(max_results + 1).to_a
+    
+    has_more = results.size > max_results
+    results.pop if has_more
+    
+    page_key = results.last&.page_key
+    pagination_response = {
+      page_key: page_key,
+      has_more: has_more
+    }
+    
+    [results, pagination_response]
   end
 
   def authorized?

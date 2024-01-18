@@ -1,12 +1,6 @@
 class EthscriptionsController < ApplicationController
   def index
-    page, per_page = pagination_params
-    
-    scope = Ethscription.all.page(page).per(per_page)
-    
-    scope = params[:sort_order]&.downcase == "asc" ? scope.oldest_first : scope.newest_first
-    
-    scope = filter_by_params(scope,
+    scope = filter_by_params(Ethscription.all,
       :current_owner,
       :creator,
       :previous_owner,
@@ -19,7 +13,7 @@ class EthscriptionsController < ApplicationController
       :ethscription_number
     )
 
-    include_latest_transfer = params[:include_latest_transfer].present? && authorized?
+    include_latest_transfer = params[:include_latest_transfer].present?
     
     if include_latest_transfer
       scope = scope.includes(:ethscription_transfers)
@@ -38,23 +32,19 @@ class EthscriptionsController < ApplicationController
       scope = scope.where(transaction_hash: sub_query)
     end
     
-    ethscriptions = Rails.cache.fetch(["ethscription-api-all", scope, include_latest_transfer]) do
-      scope.map do |ethscription|
-        if include_latest_transfer
-          ethscription.as_json.merge(
-            latest_transfer: ethscription.latest_transfer.as_json
-          )
-        else
-          ethscription
-        end
+    results, pagination_response = paginate(scope)
+    
+    if include_latest_transfer
+      results.map! do |ethscription|
+        ethscription.as_json.merge(
+          latest_transfer: ethscription.latest_transfer.as_json
+        )
       end
     end
     
-    ethscriptions = numbers_to_strings(ethscriptions)
-    
     render json: {
-      result: ethscriptions,
-      total_count: scope.total_count
+      result: numbers_to_strings(results),
+      pagination: pagination_response
     }
   end
   

@@ -1,16 +1,11 @@
 class BlocksController < ApplicationController
   def index
-    page, per_page = pagination_params
-
-    scope = EthBlock.all.page(page).per(per_page)
-
-    scope = params[:sort_order]&.downcase == "asc" ? scope.oldest_first : scope.newest_first
-
-    blocks = Rails.cache.fetch(["block-api-all", scope]) do
-      scope.to_a
-    end
-
-    render json: blocks
+    results, pagination_response = paginate(EthBlock.all)
+    
+    render json: {
+      result: numbers_to_strings(results),
+      pagination: pagination_response
+    }
   end
 
   def show

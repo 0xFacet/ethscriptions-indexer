@@ -1,10 +1,6 @@
 class EthscriptionTransfersController < ApplicationController
   def index
-    page, per_page = pagination_params
-    
-    scope = EthscriptionTransfer.all.page(page).per(per_page)
-    
-    scope = filter_by_params(scope,
+    scope = filter_by_params(EthscriptionTransfer.all,
       :from_address,
       :to_address,
       :transaction_hash
@@ -29,11 +25,11 @@ class EthscriptionTransfersController < ApplicationController
       scope = scope.where(ethscription_transaction_hash: tokens)
     end
     
-    scope = params[:sort_order]&.downcase == "asc" ? scope.oldest_first : scope.newest_first
+    results, pagination_response = paginate(scope)
     
     render json: {
-      result: numbers_to_strings(scope),
-      total_count: scope.total_count
+      result: numbers_to_strings(transfers),
+      pagination: pagination_response
     }
   end
 end

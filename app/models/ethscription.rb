@@ -20,6 +20,11 @@ class Ethscription < ApplicationRecord
   scope :newest_first, -> { order(block_number: :desc, transaction_index: :desc) }
   scope :oldest_first, -> { order(block_number: :asc, transaction_index: :asc) }
   
+  scope :with_token_tick_and_protocol, -> (token_tick, token_protocol) {
+    joins(token_item: :token)
+    .where(tokens: {tick: token_tick, protocol: token_protocol})
+  }
+  
   before_validation :set_derived_attributes, on: :create
   after_create :create_initial_transfer!
   

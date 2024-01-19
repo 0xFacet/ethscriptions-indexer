@@ -10,34 +10,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: heroku_ext; Type: SCHEMA; Schema: -; Owner: -
---
-
-CREATE SCHEMA heroku_ext;
-
-
---
--- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON SCHEMA public IS '';
-
-
---
--- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA heroku_ext;
-
-
---
--- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
-
-
---
 -- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
 --
 
@@ -105,20 +77,19 @@ CREATE FUNCTION public.check_block_order() RETURNS trigger
 CREATE FUNCTION public.check_block_order_on_update() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
-      BEGIN
-        IF NEW.imported_at IS NOT NULL AND NEW.state_hash IS NULL THEN
-          RAISE EXCEPTION 'state_hash must be set when imported_at is set';
-        END IF;
-      
-        IF (SELECT MAX(block_number) FROM eth_blocks) IS NOT NULL THEN
-          IF NEW.parent_state_hash <> (SELECT state_hash FROM eth_blocks WHERE block_number = (SELECT MAX(block_number) FROM eth_blocks WHERE block_number < NEW.block_number) AND imported_at IS NOT NULL) THEN
-            RAISE EXCEPTION 'Parent state hash does not match the state hash of the previous block';
-          END IF;
-        END IF;
-      
-        RETURN NEW;
-      END;
-      $$;
+BEGIN
+  IF NEW.imported_at IS NOT NULL AND NEW.state_hash IS NULL THEN
+    RAISE EXCEPTION 'state_hash must be set when imported_at is set';
+  END IF;
+
+  IF NEW.is_genesis_block = false AND 
+    NEW.parent_state_hash <> (SELECT state_hash FROM eth_blocks WHERE block_number = NEW.block_number - 1 AND imported_at IS NOT NULL) THEN
+    RAISE EXCEPTION 'Parent state hash does not match the state hash of the previous block';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
 
 
 --
@@ -1118,7 +1089,7 @@ CREATE INDEX index_ethscriptions_on_block_number ON public.ethscriptions USING b
 -- Name: index_ethscriptions_on_block_number_and_transaction_index; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_ethscriptions_on_block_number_and_transaction_index ON public.ethscriptions USING btree (block_number, transaction_index);
+CREATE UNIQUE INDEX index_ethscriptions_on_block_number_and_transaction_index ON public.ethscriptions USING btree (block_number, transaction_index);
 
 
 --
@@ -1420,7 +1391,6 @@ ALTER TABLE ONLY public.token_items
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
-('20240117145543'),
 ('20240115192312'),
 ('20240115151119'),
 ('20240115144930'),

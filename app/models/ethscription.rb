@@ -119,10 +119,13 @@ class Ethscription < ApplicationRecord
   end
   
   def as_json(options = {})
-    if options[:include_transfers]
-      super(options.merge(include: :ethscription_transfers))
-    else
-      super(options)
+    super(options).tap do |json|
+      if options[:include_transfers]
+        json[:ethscription_transfers] = ethscription_transfers.as_json
+      end
+      if options[:include_latest_transfer]
+        json[:latest_transfer] = latest_transfer.as_json
+      end
     end
   end
   

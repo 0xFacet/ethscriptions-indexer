@@ -2,6 +2,8 @@ class TokensController < ApplicationController
   def index
     results, pagination_response = paginate(Token.all)
     
+    cache_on_block
+    
     render json: {
       result: numbers_to_strings(results),
       pagination: pagination_response
@@ -10,6 +12,8 @@ class TokensController < ApplicationController
   
   def balances
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
+    
+    cache_on_block
     
     render json: {
       result: numbers_to_strings(token.balances(params[:as_of_block_number]&.to_i))
@@ -24,6 +28,8 @@ class TokensController < ApplicationController
       as_of_block_number: params[:as_of_block_number]&.to_i
     )
     
+    cache_on_block
+    
     render json: {
       result: numbers_to_strings(balance.to_s)
     }
@@ -31,6 +37,8 @@ class TokensController < ApplicationController
   
   def balances_observations
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
+    
+    cache_on_block
     
     render json: {
       result: numbers_to_strings(token.balances_observations)
@@ -51,6 +59,8 @@ class TokensController < ApplicationController
     valid_tx_hashes = results.map(&:ethscription_transaction_hash)
     
     invalid_tx_hashes = tx_hashes.sort - valid_tx_hashes.sort
+    
+    cache_on_block
     
     res = {
       valid: valid_tx_hashes,

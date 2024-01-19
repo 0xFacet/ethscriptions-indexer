@@ -13,6 +13,11 @@ class TokensController < ApplicationController
   def balances
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
     
+    if !token
+      render json: { error: "Not found" }, status: 404
+      return
+    end
+    
     cache_on_block
     
     render json: {
@@ -23,8 +28,13 @@ class TokensController < ApplicationController
   def balance_of
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
     
+    if !token
+      render json: { error: "Not found" }, status: 404
+      return
+    end
+    
     balance = token.balance_of(
-      address: params[:address],
+      address: params[:address]&.downcase,
       as_of_block_number: params[:as_of_block_number]&.to_i
     )
     

@@ -32,9 +32,7 @@ class EthscriptionsController < ApplicationController
     
     results, pagination_response, sort_order = paginate(scope)
     
-    cache_on_block(
-      cache_forever_with: sort_order == :newest_first && results.first&.block_number
-    )
+    cache_on_block
     
     results = results.map do |ethscription|
       ethscription.as_json(include_latest_transfer: params[:include_latest_transfer])
@@ -52,8 +50,8 @@ class EthscriptionsController < ApplicationController
     id_or_hash = params[:id].to_s.downcase
     
     scope = id_or_hash.match?(/\A0x[0-9a-f]{64}\z/) ? 
-      scope.where(transaction_hash: params[:id]) : 
-      scope.where(ethscription_number: params[:id])
+      scope.where(transaction_hash: id_or_hash) : 
+      scope.where(ethscription_number: id_or_hash)
     
     ethscription = Rails.cache.fetch(["ethscription-api-show", scope]) do
       scope.first

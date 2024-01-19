@@ -15,10 +15,10 @@ class ApplicationController < ActionController::API
     scope
   end
   
-  def paginate(scope)
+  def paginate(scope, results_limit: 50)
     sort_order = params[:sort_order]&.downcase == "asc" ? :oldest_first : :newest_first
 
-    max_results = (params[:max_results] || 25).to_i.clamp(1, 50)
+    max_results = (params[:max_results] || 25).to_i.clamp(1, results_limit)
 
     if authorized? && params[:max_results].present?
       max_results = params[:max_results].to_i

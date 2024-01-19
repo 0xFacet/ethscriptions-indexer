@@ -13,7 +13,9 @@ class EthscriptionsController < ApplicationController
       :ethscription_number
     )
 
-    if params[:include_latest_transfer].present?
+    include_latest_transfer = params[:include_latest_transfer].present?
+    
+    if include_latest_transfer
       scope = scope.includes(:ethscription_transfers)
     end
     
@@ -30,12 +32,15 @@ class EthscriptionsController < ApplicationController
       scope = scope.where(transaction_hash: sub_query)
     end
     
-    results, pagination_response, sort_order = paginate(scope)
+    results, pagination_response = paginate(
+      scope,
+      results_limit: include_latest_transfer ? 50 : 100
+    )
     
     cache_on_block
     
     results = results.map do |ethscription|
-      ethscription.as_json(include_latest_transfer: params[:include_latest_transfer])
+      ethscription.as_json(include_latest_transfer: include_latest_transfer)
     end
     
     render json: {

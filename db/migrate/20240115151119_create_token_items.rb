@@ -3,6 +3,8 @@ class CreateTokenItems < ActiveRecord::Migration[7.1]
     create_table :token_items do |t|
       t.string :ethscription_transaction_hash, null: false
       t.string :deploy_ethscription_transaction_hash, null: false
+      t.bigint :block_number, null: false
+      t.bigint :transaction_index, null: false
       t.bigint :token_item_id, null: false
       
       t.foreign_key :ethscriptions,
@@ -18,7 +20,9 @@ class CreateTokenItems < ActiveRecord::Migration[7.1]
       t.index :ethscription_transaction_hash, unique: true
       t.index [:deploy_ethscription_transaction_hash, :token_item_id], unique: true
       t.index [:ethscription_transaction_hash, :deploy_ethscription_transaction_hash, :token_item_id], unique: true
-      
+      t.index [:block_number, :transaction_index], unique: true
+      t.index :transaction_index
+            
       t.check_constraint 'token_item_id > 0'
       t.check_constraint "deploy_ethscription_transaction_hash ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "ethscription_transaction_hash ~ '^0x[a-f0-9]{64}$'"

@@ -1,15 +1,10 @@
 class TokensController < ApplicationController
   def index
-    page, per_page = pagination_params
-    
-    scope = Token.all.page(page).per(per_page)
-    
-    tokens = Rails.cache.fetch(["tokens-api-all", scope]) do
-      numbers_to_strings(scope.to_a)
-    end
+    results, pagination_response = paginate(Token.all)
     
     render json: {
-      result: tokens
+      result: numbers_to_strings(results),
+      pagination: pagination_response
     }
   end
   
@@ -43,17 +38,17 @@ class TokensController < ApplicationController
   end
   
   def validate_token_items
-    page, per_page = pagination_params
-    
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
 
     tx_hashes = parse_param_array(params[:transaction_hashes])
     
     valid_tx_hash_scope = token.token_items.where(
       ethscription_transaction_hash: tx_hashes
-    ).page(page).per(per_page)
+    )
     
-    valid_tx_hashes = valid_tx_hash_scope.pluck(:ethscription_transaction_hash)
+    results, pagination_response = paginate(valid_tx_hash_scope)
+    
+    valid_tx_hashes = results.map(&:ethscription_transaction_hash)
     
     invalid_tx_hashes = tx_hashes.sort - valid_tx_hashes.sort
     
@@ -65,7 +60,7 @@ class TokensController < ApplicationController
     
     render json: {
       result: numbers_to_strings(res),
-      total_count: valid_tx_hash_scope.total_count
+      pagination: pagination_response
     }
   end
 end

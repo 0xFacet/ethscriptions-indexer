@@ -1,4 +1,13 @@
 class Token < ApplicationRecord
+  include OrderQuery
+  order_query :newest_first,
+    [:deploy_block_number, :desc],
+    [:deploy_transaction_index, :desc, unique: true]
+  
+  order_query :oldest_first,
+    [:deploy_block_number, :asc],
+    [:deploy_transaction_index, :asc, unique: true]
+    
   MAX_PROTOCOL_LENGTH = MAX_TICK_LENGTH = 1000
   
   has_many :token_items,
@@ -15,6 +24,14 @@ class Token < ApplicationRecord
   
   scope :minted_out, -> { where("total_supply = max_supply") }
   scope :not_minted_out, -> { where("total_supply < max_supply") }
+  
+  def self.find_by_page_key(...)
+    find_by_deploy_ethscription_transaction_hash(...)
+  end
+  
+  def page_key
+    deploy_ethscription_transaction_hash
+  end
   
   def minted_out?
     total_supply == max_supply
@@ -64,17 +81,21 @@ class Token < ApplicationRecord
     
     sql = <<-SQL
       INSERT INTO token_items (
-        ethscription_transaction_hash, 
-        deploy_ethscription_transaction_hash, 
-        token_item_id, 
-        created_at, 
+        ethscription_transaction_hash,
+        deploy_ethscription_transaction_hash,
+        token_item_id,
+        block_number,
+        transaction_index,
+        created_at,
         updated_at
       )
       SELECT 
-        e.transaction_hash, 
-        '#{deploy_ethscription_transaction_hash}', 
-        (substring(e.content_uri from '#{regex}')::integer), 
-        NOW(), 
+        e.transaction_hash,
+        '#{deploy_ethscription_transaction_hash}',
+        (substring(e.content_uri from '#{regex}')::integer),
+        e.block_number,
+        e.transaction_index,
+        NOW(),
         NOW()
       FROM 
         ethscriptions e

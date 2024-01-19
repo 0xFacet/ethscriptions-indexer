@@ -1,4 +1,13 @@
 class Ethscription < ApplicationRecord
+  include OrderQuery
+  order_query :newest_first,
+    [:block_number, :desc],
+    [:transaction_index, :desc, unique: true]
+  
+  order_query :oldest_first,
+    [:block_number, :asc],
+    [:transaction_index, :asc, unique: true]
+  
   belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
     inverse_of: :ethscriptions
   belongs_to :eth_transaction, foreign_key: :transaction_hash, primary_key: :transaction_hash, optional: true, inverse_of: :ethscription
@@ -17,18 +26,25 @@ class Ethscription < ApplicationRecord
     primary_key: :transaction_hash,
     inverse_of: :deploy_ethscription
     
-  scope :newest_first, -> { order(block_number: :desc, transaction_index: :desc) }
-  scope :oldest_first, -> { order(block_number: :asc, transaction_index: :asc) }
   
   scope :with_token_tick_and_protocol, -> (token_tick, token_protocol) {
     joins(token_item: :token)
     .where(tokens: {tick: token_tick, protocol: token_protocol})
+    .order('token_items.block_number DESC, token_items.transaction_index DESC')
   }
   
   before_validation :set_derived_attributes, on: :create
   after_create :create_initial_transfer!
   
   MAX_MIMETYPE_LENGTH = 1000
+  
+  def self.find_by_page_key(...)
+    find_by_transaction_hash(...)
+  end
+  
+  def page_key
+    transaction_hash
+  end
   
   def latest_transfer
     ethscription_transfers.sort_by do |transfer|

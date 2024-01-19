@@ -13,9 +13,7 @@ class EthscriptionsController < ApplicationController
       :ethscription_number
     )
 
-    include_latest_transfer = params[:include_latest_transfer].present?
-    
-    if include_latest_transfer
+    if params[:include_latest_transfer].present?
       scope = scope.includes(:ethscription_transfers)
     end
     
@@ -32,14 +30,14 @@ class EthscriptionsController < ApplicationController
       scope = scope.where(transaction_hash: sub_query)
     end
     
-    results, pagination_response = paginate(scope)
+    results, pagination_response, sort_order = paginate(scope)
     
-    if include_latest_transfer
-      results.map! do |ethscription|
-        ethscription.as_json.merge(
-          latest_transfer: ethscription.latest_transfer.as_json
-        )
-      end
+    cache_on_block(
+      cache_forever_with: sort_order == :newest_first && results.first&.block_number
+    )
+    
+    results = results.map do |ethscription|
+      ethscription.as_json(include_latest_transfer: params[:include_latest_transfer])
     end
     
     render json: {
@@ -66,6 +64,8 @@ class EthscriptionsController < ApplicationController
       return
     end
     
+    cache_on_block
+    
     render json: {
       result: numbers_to_strings(ethscription.as_json(include_transfers: true))
     }
@@ -81,6 +81,10 @@ class EthscriptionsController < ApplicationController
       scope.where(ethscription_number: params[:id])
     
     item = scope.first
+    
+    cache_on_block(
+      cache_forever_with: item&.block_number
+    )
     
     if item
       uri_obj = item.parsed_data_uri
@@ -204,6 +208,8 @@ class EthscriptionsController < ApplicationController
     end
     
     total_ethscriptions_in_future_blocks = scope.where('block_number > ?', block_range.last).count
+    
+    cache_on_block
   
     render json: {
       total_future_ethscriptions: total_ethscriptions_in_future_blocks,

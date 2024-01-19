@@ -2,6 +2,8 @@ class BlocksController < ApplicationController
   def index
     results, pagination_response = paginate(EthBlock.all)
     
+    cache_on_block
+    
     render json: {
       result: numbers_to_strings(results),
       pagination: pagination_response
@@ -14,7 +16,9 @@ class BlocksController < ApplicationController
     block = Rails.cache.fetch(["block-api-show", scope]) do
       scope.first
     end
-
+    
+    cache_on_block
+    
     if !block
       render json: { error: "Not found" }, status: 404
       return
@@ -34,6 +38,8 @@ class BlocksController < ApplicationController
     res = Rails.cache.fetch(['newer_blocks', scope]) do
       scope.to_a
     end
+    
+    cache_on_block
     
     render json: {
       result: res

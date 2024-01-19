@@ -56,6 +56,10 @@ class EthBlock < ApplicationRecord
     EthBlock.where.not(imported_at: nil).order(block_number: :desc).limit(1).pluck(:block_number).first
   end
   
+  def self.most_recently_imported_blockhash
+    EthBlock.where.not(imported_at: nil).order(block_number: :desc).limit(1).pluck(:blockhash).first
+  end
+  
   def self.import_batch_size
     ENV.fetch('BLOCK_IMPORT_BATCH_SIZE', 2).to_i
   end

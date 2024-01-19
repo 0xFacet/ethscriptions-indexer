@@ -27,6 +27,8 @@ class EthscriptionTransfersController < ApplicationController
     
     results, pagination_response = paginate(scope)
     
+    cache_on_block
+    
     render json: {
       result: numbers_to_strings(results),
       pagination: pagination_response

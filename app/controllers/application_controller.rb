@@ -1,6 +1,8 @@
 class ApplicationController < ActionController::API
   private
   
+  delegate :expand_cache_key, to: ActiveSupport::Cache
+  
   def parse_param_array(param, limit: 100)
     Array(param).map(&:to_s).map(&:downcase).uniq.take(limit)
   end
@@ -41,7 +43,7 @@ class ApplicationController < ActionController::API
       has_more: has_more
     }
     
-    [results, pagination_response]
+    [results, pagination_response, sort_order]
   end
 
   def authorized?
@@ -55,6 +57,36 @@ class ApplicationController < ActionController::API
   rescue JSON::ParserError
     Airbrake.notify("Invalid API_AUTH_TOKEN format: #{ENV.fetch('API_AUTH_TOKEN', "[]")}")
     false
+  end
+  
+  def cache_on_block(etag: nil, max_age: 6.seconds, cache_forever_with: nil)
+    if cache_forever_with
+      current = EthBlock.cached_global_block_number
+      diff = current - cache_forever_with
+      if diff > 64
+        max_age = 1.day
+      end
+    end
+    
+    set_cache_control_headers(
+      max_age: max_age,
+      etag: [
+        EthBlock.most_recently_imported_blockhash, etag
+      ]
+    )
+  end
+  
+  def set_cache_control_headers(max_age:, etag: nil)
+    version = Rails.cache.fetch("etag-version") do
+      SecureRandom.hex(32)
+    end
+    
+    addition = Rails.env.development? ? rand : ''
+    
+    versioned_etag = expand_cache_key([etag, version, addition])
+    fresh_when(etag: versioned_etag, public: true)
+    expires_in(max_age, public: true)
+    response.headers['Vary'] = 'Authorization'
   end
   
   def numbers_to_strings(result)

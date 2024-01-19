@@ -58,7 +58,11 @@ class TokensController < ApplicationController
   def validate_token_items
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
 
-    tx_hashes = parse_param_array(params[:transaction_hashes])
+    tx_hashes = if request.post?
+      params.require(:transaction_hashes)
+    else
+      parse_param_array(params[:transaction_hashes])
+    end
     
     valid_tx_hash_scope = token.token_items.where(
       ethscription_transaction_hash: tx_hashes

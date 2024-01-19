@@ -51,11 +51,11 @@ class ApplicationController < ActionController::API
     return false if authorization_header.blank?
   
     token = authorization_header.remove('Bearer ').strip
-    stored_tokens = JSON.parse(ENV.fetch('API_AUTH_TOKEN', "[]"))
+    stored_tokens = JSON.parse(ENV.fetch('API_AUTH_TOKENS', "[]"))
     
     stored_tokens.include?(token)
   rescue JSON::ParserError
-    Airbrake.notify("Invalid API_AUTH_TOKEN format: #{ENV.fetch('API_AUTH_TOKEN', "[]")}")
+    Airbrake.notify("Invalid API_AUTH_TOKEN format: #{ENV.fetch('API_AUTH_TOKENS', "[]")}")
     false
   end
   

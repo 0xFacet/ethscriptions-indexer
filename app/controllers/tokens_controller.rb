@@ -1,6 +1,11 @@
 class TokensController < ApplicationController
   def index
-    results, pagination_response = paginate(Token.all)
+    scope = filter_by_params(Token.all,
+      :protocol,
+      :tick
+    )
+    
+    results, pagination_response = paginate(scope)
     
     cache_on_block
     

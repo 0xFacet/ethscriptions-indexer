@@ -80,8 +80,8 @@ class EthscriptionsController < ApplicationController
     id_or_hash = params[:id].to_s.downcase
     
     scope = id_or_hash.match?(/\A0x[0-9a-f]{64}\z/) ? 
-      scope.where(transaction_hash: params[:id]) : 
-      scope.where(ethscription_number: params[:id])
+      scope.where(transaction_hash: id_or_hash) : 
+      scope.where(ethscription_number: id_or_hash)
     
     item = scope.first
     

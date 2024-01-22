@@ -3,7 +3,7 @@ class EthBlock < ApplicationRecord
   class BlockNotReadyToImportError < StandardError; end
   
   order_query :newest_first,
-    [:block_number, :desc, unique:true ]
+    [:block_number, :desc, unique: true]
   
   order_query :oldest_first,
     [:block_number, :asc, unique: true]
@@ -203,13 +203,13 @@ class EthBlock < ApplicationRecord
   end
   
   def self.uncached_global_block_number
-    ethereum_client.get_block_number
+    ethereum_client.get_block_number.tap do |block_number|
+      Rails.cache.write('global_block_number', block_number, expires_in: 3.seconds)
+    end
   end
   
   def self.cached_global_block_number
-    Rails.cache.fetch('global_block_number', expires_in: 3.seconds) do
-      uncached_global_block_number
-    end
+    Rails.cache.read('global_block_number') || uncached_global_block_number
   end
   
   def self.validate_ready_to_import!(block_by_number_response, receipts_response)

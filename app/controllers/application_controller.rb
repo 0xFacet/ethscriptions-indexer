@@ -4,7 +4,9 @@ class ApplicationController < ActionController::API
   delegate :expand_cache_key, to: ActiveSupport::Cache
   
   def parse_param_array(param, limit: 100)
-    Array(param).map(&:to_s).map(&:downcase).uniq.take(limit)
+    Array(param).map(&:to_s).map do |param|
+      param =~ /\A0x([a-f0-9]{2})+\z/i ? param.downcase : param
+    end.uniq.take(limit)
   end
   
   def filter_by_params(scope, *param_names)

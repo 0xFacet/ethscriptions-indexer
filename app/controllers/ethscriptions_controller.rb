@@ -1,12 +1,6 @@
 class EthscriptionsController < ApplicationController
   def index
-    page, per_page = pagination_params
-    
-    scope = Ethscription.all.page(page).per(per_page)
-    
-    scope = params[:sort_order]&.downcase == "asc" ? scope.oldest_first : scope.newest_first
-    
-    scope = filter_by_params(scope,
+    scope = filter_by_params(Ethscription.all,
       :current_owner,
       :creator,
       :previous_owner,
@@ -19,7 +13,7 @@ class EthscriptionsController < ApplicationController
       :ethscription_number
     )
 
-    include_latest_transfer = params[:include_latest_transfer].present? && authorized?
+    include_latest_transfer = params[:include_latest_transfer].present?
     
     if include_latest_transfer
       scope = scope.includes(:ethscription_transfers)
@@ -30,9 +24,7 @@ class EthscriptionsController < ApplicationController
     transferred_in_tx = parse_param_array(params[:transferred_in_tx])
     
     if token_tick && token_protocol
-      sq1 = Token.where(tick: token_tick, protocol: token_protocol).select(:deploy_ethscription_transaction_hash)
-      sq2 = TokenItem.where(deploy_ethscription_transaction_hash: sq1).select(:ethscription_transaction_hash)
-      scope = scope.where(transaction_hash: sq2)
+      scope = scope.with_token_tick_and_protocol(token_tick, token_protocol)
     end
     
     if transferred_in_tx.present?
@@ -40,23 +32,20 @@ class EthscriptionsController < ApplicationController
       scope = scope.where(transaction_hash: sub_query)
     end
     
-    ethscriptions = Rails.cache.fetch(["ethscription-api-all", scope, include_latest_transfer]) do
-      scope.map do |ethscription|
-        if include_latest_transfer
-          ethscription.as_json.merge(
-            latest_transfer: ethscription.latest_transfer.as_json
-          )
-        else
-          ethscription
-        end
-      end
+    results, pagination_response = paginate(
+      scope,
+      results_limit: include_latest_transfer ? 50 : 100
+    )
+    
+    cache_on_block
+    
+    results = results.map do |ethscription|
+      ethscription.as_json(include_latest_transfer: include_latest_transfer)
     end
     
-    ethscriptions = numbers_to_strings(ethscriptions)
-    
     render json: {
-      result: ethscriptions,
-      total_count: scope.total_count
+      result: numbers_to_strings(results),
+      pagination: pagination_response
     }
   end
   
@@ -66,8 +55,8 @@ class EthscriptionsController < ApplicationController
     id_or_hash = params[:id].to_s.downcase
     
     scope = id_or_hash.match?(/\A0x[0-9a-f]{64}\z/) ? 
-      scope.where(transaction_hash: params[:id]) : 
-      scope.where(ethscription_number: params[:id])
+      scope.where(transaction_hash: id_or_hash) : 
+      scope.where(ethscription_number: id_or_hash)
     
     ethscription = Rails.cache.fetch(["ethscription-api-show", scope]) do
       scope.first
@@ -77,6 +66,8 @@ class EthscriptionsController < ApplicationController
       render json: { error: "Not found" }, status: 404
       return
     end
+    
+    cache_on_block
     
     render json: {
       result: numbers_to_strings(ethscription.as_json(include_transfers: true))
@@ -93,6 +84,10 @@ class EthscriptionsController < ApplicationController
       scope.where(ethscription_number: params[:id])
     
     item = scope.first
+    
+    cache_on_block(
+      cache_forever_with: item&.block_number
+    )
     
     if item
       uri_obj = item.parsed_data_uri
@@ -216,6 +211,8 @@ class EthscriptionsController < ApplicationController
     end
     
     total_ethscriptions_in_future_blocks = scope.where('block_number > ?', block_range.last).count
+    
+    cache_on_block
   
     render json: {
       total_future_ethscriptions: total_ethscriptions_in_future_blocks,

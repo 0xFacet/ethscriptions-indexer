@@ -10,34 +10,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: heroku_ext; Type: SCHEMA; Schema: -; Owner: -
---
-
-CREATE SCHEMA heroku_ext;
-
-
---
--- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON SCHEMA public IS '';
-
-
---
--- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA heroku_ext;
-
-
---
--- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
-
-
---
 -- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
 --
 
@@ -529,6 +501,8 @@ CREATE TABLE public.token_items (
     id bigint NOT NULL,
     ethscription_transaction_hash character varying NOT NULL,
     deploy_ethscription_transaction_hash character varying NOT NULL,
+    block_number bigint NOT NULL,
+    transaction_index bigint NOT NULL,
     token_item_id bigint NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
@@ -1231,10 +1205,24 @@ CREATE INDEX index_ethscriptions_on_updated_at ON public.ethscriptions USING btr
 
 
 --
+-- Name: index_token_items_on_block_number_and_transaction_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_token_items_on_block_number_and_transaction_index ON public.token_items USING btree (block_number, transaction_index);
+
+
+--
 -- Name: index_token_items_on_ethscription_transaction_hash; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX index_token_items_on_ethscription_transaction_hash ON public.token_items USING btree (ethscription_transaction_hash);
+
+
+--
+-- Name: index_token_items_on_transaction_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_token_items_on_transaction_index ON public.token_items USING btree (transaction_index);
 
 
 --

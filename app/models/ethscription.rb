@@ -1,19 +1,56 @@
 class Ethscription < ApplicationRecord
+  include OrderQuery
+  order_query :newest_first,
+    [:block_number, :desc],
+    [:transaction_index, :desc, unique: true]
+  
+  order_query :oldest_first,
+    [:block_number, :asc],
+    [:transaction_index, :asc, unique: true]
+  
   belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
-    inverse_of: :ethscription
+    inverse_of: :ethscriptions
   belongs_to :eth_transaction, foreign_key: :transaction_hash, primary_key: :transaction_hash, optional: true, inverse_of: :ethscription
   
   has_many :ethscription_transfers, foreign_key: :ethscription_transaction_hash, primary_key: :transaction_hash, inverse_of: :ethscription
   
   has_many :ethscription_ownership_versions, foreign_key: :ethscription_transaction_hash, primary_key: :transaction_hash, inverse_of: :ethscription
   
-  scope :newest_first, -> { order(block_number: :desc, transaction_index: :desc) }
-  scope :oldest_first, -> { order(block_number: :asc, transaction_index: :asc) }
+  has_one :token_item,
+    foreign_key: :ethscription_transaction_hash,
+    primary_key: :transaction_hash,
+    inverse_of: :ethscription
+  
+  has_one :token,
+    foreign_key: :deploy_ethscription_transaction_hash,
+    primary_key: :transaction_hash,
+    inverse_of: :deploy_ethscription
+    
+  
+  scope :with_token_tick_and_protocol, -> (token_tick, token_protocol) {
+    joins(token_item: :token)
+    .where(tokens: {tick: token_tick, protocol: token_protocol})
+    .order('token_items.block_number DESC, token_items.transaction_index DESC')
+  }
   
   before_validation :set_derived_attributes, on: :create
   after_create :create_initial_transfer!
   
   MAX_MIMETYPE_LENGTH = 1000
+  
+  def self.find_by_page_key(...)
+    find_by_transaction_hash(...)
+  end
+  
+  def page_key
+    transaction_hash
+  end
+  
+  def latest_transfer
+    ethscription_transfers.sort_by do |transfer|
+      [transfer.block_number, transfer.transaction_index, transfer.transfer_index]
+    end.last
+  end
   
   def create_initial_transfer!
     ethscription_transfers.create!(
@@ -82,10 +119,13 @@ class Ethscription < ApplicationRecord
   end
   
   def as_json(options = {})
-    if options[:include_transfers]
-      super(options.merge(include: :ethscription_transfers))
-    else
-      super(options)
+    super(options).tap do |json|
+      if options[:include_transfers]
+        json[:ethscription_transfers] = ethscription_transfers.as_json
+      end
+      if options[:include_latest_transfer]
+        json[:latest_transfer] = latest_transfer.as_json
+      end
     end
   end
   

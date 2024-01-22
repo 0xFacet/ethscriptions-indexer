@@ -1,17 +1,13 @@
 class BlocksController < ApplicationController
   def index
-    page = (params[:page] || 1).to_i
-    per_page = (params[:per_page] || 25).to_i.clamp(1, 50)
-
-    scope = EthBlock.all.page(page).per(per_page)
-
-    scope = params[:sort_order]&.downcase == "asc" ? scope.oldest_first : scope.newest_first
-
-    blocks = Rails.cache.fetch(["block-api-all", scope]) do
-      scope.to_a
-    end
-
-    render json: blocks
+    results, pagination_response = paginate(EthBlock.all)
+    
+    cache_on_block
+    
+    render json: {
+      result: numbers_to_strings(results),
+      pagination: pagination_response
+    }
   end
 
   def show
@@ -20,7 +16,9 @@ class BlocksController < ApplicationController
     block = Rails.cache.fetch(["block-api-show", scope]) do
       scope.first
     end
-
+    
+    cache_on_block
+    
     if !block
       render json: { error: "Not found" }, status: 404
       return
@@ -40,6 +38,8 @@ class BlocksController < ApplicationController
     res = Rails.cache.fetch(['newer_blocks', scope]) do
       scope.to_a
     end
+    
+    cache_on_block
     
     render json: {
       result: res

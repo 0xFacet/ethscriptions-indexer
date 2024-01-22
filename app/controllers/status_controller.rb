@@ -5,6 +5,8 @@ class StatusController < ApplicationController
     
     blocks_behind = current_block_number - last_imported_block
     
+    cache_on_block
+    
     resp = {
       current_block_number: current_block_number,
       last_imported_block: last_imported_block,

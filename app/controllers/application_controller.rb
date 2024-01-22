@@ -83,7 +83,7 @@ class ApplicationController < ActionController::API
       SecureRandom.hex(32)
     end
     
-    addition = Rails.env.development? ? rand : ''
+    addition = ActionController::Base.perform_caching ? '' : rand
     
     versioned_etag = expand_cache_key([etag, version, addition])
     fresh_when(etag: versioned_etag, public: true)

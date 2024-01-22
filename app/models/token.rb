@@ -258,13 +258,4 @@ class Token < ApplicationRecord
   def as_json(options = {})
     super(options.merge(except: [:balances_observations]))
   end
-  
-  def self.import_test
-    Token.create_from_token_details!(tick: "eths", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
-    Token.create_from_token_details!(tick: "Facet", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
-    Token.create_from_token_details!(tick: "gwei", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
-    Token.create_from_token_details!(tick: "mfpurrs", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
-    Token.create_from_token_details!(tick: "dumb", p: "erc-20", max: 21e6.to_i, lim: 1000).sync_token_items!
-    Token.create_from_token_details!(tick: "nodes", p: "erc-20", max: 10000000000, lim: 10000).sync_token_items!
-  end
 end

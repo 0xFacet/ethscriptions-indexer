@@ -37,11 +37,11 @@ class CreateTokenItems < ActiveRecord::Migration[7.1]
         SET total_supply = (
           SELECT COUNT(*) * mint_amount
           FROM token_items
-          WHERE deploy_ethscription_transaction_hash = NEW.deploy_ethscription_transaction_hash
+          WHERE deploy_ethscription_transaction_hash = OLD.deploy_ethscription_transaction_hash
         )
-        WHERE deploy_ethscription_transaction_hash = NEW.deploy_ethscription_transaction_hash;
+        WHERE deploy_ethscription_transaction_hash = OLD.deploy_ethscription_transaction_hash;
 
-        RETURN NEW;
+        RETURN OLD;
       END;
       $$ LANGUAGE plpgsql;
 

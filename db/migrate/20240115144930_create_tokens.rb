@@ -4,8 +4,8 @@ class CreateTokens < ActiveRecord::Migration[7.1]
       t.string :deploy_ethscription_transaction_hash, null: false
       t.bigint :deploy_block_number, null: false
       t.bigint :deploy_transaction_index, null: false
-      t.string :protocol, null: false, limit: Token::MAX_PROTOCOL_LENGTH
-      t.string :tick, null: false, limit: Token::MAX_TICK_LENGTH
+      t.string :protocol, null: false, limit: 1000
+      t.string :tick, null: false, limit: 1000
       t.bigint :max_supply, null: false
       t.bigint :total_supply, null: false, default: 0
       t.bigint :mint_amount, null: false

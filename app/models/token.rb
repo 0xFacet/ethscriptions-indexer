@@ -8,8 +8,6 @@ class Token < ApplicationRecord
     [:deploy_block_number, :asc],
     [:deploy_transaction_index, :asc, unique: true]
     
-  MAX_PROTOCOL_LENGTH = MAX_TICK_LENGTH = 1000
-  
   has_many :token_items,
     foreign_key: :deploy_ethscription_transaction_hash,
     primary_key: :deploy_ethscription_transaction_hash,

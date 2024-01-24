@@ -204,7 +204,7 @@ class EthBlock < ApplicationRecord
   
   def self.uncached_global_block_number
     ethereum_client.get_block_number.tap do |block_number|
-      Rails.cache.write('global_block_number', block_number, expires_in: 3.seconds)
+      Rails.cache.write('global_block_number', block_number, expires_in: 1.second)
     end
   end
   

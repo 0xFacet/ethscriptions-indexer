@@ -5,14 +5,14 @@ class StatusController < ApplicationController
     
     blocks_behind = current_block_number - last_imported_block
     
-    cache_on_block
-    
-    resp = {
-      current_block_number: current_block_number,
-      last_imported_block: last_imported_block,
-      blocks_behind: blocks_behind
-    }
-    
-    render json: resp
+    cache_on_block do
+      resp = {
+        current_block_number: current_block_number,
+        last_imported_block: last_imported_block,
+        blocks_behind: blocks_behind
+      }
+      
+      render json: resp
+    end
   end
 end

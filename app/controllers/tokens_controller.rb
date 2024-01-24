@@ -7,12 +7,12 @@ class TokensController < ApplicationController
     
     results, pagination_response = paginate(scope)
     
-    cache_on_block
-    
-    render json: {
-      result: numbers_to_strings(results),
-      pagination: pagination_response
-    }
+    cache_on_block do
+      render json: {
+        result: numbers_to_strings(results),
+        pagination: pagination_response
+      }
+    end
   end
   
   def balances
@@ -23,11 +23,11 @@ class TokensController < ApplicationController
       return
     end
     
-    cache_on_block
-    
-    render json: {
-      result: numbers_to_strings(token.balances(params[:as_of_block_number]&.to_i))
-    }
+    cache_on_block do
+      render json: {
+        result: numbers_to_strings(token.balances(params[:as_of_block_number]&.to_i))
+      }
+    end
   end
   
   def balance_of
@@ -43,21 +43,21 @@ class TokensController < ApplicationController
       as_of_block_number: params[:as_of_block_number]&.to_i
     )
     
-    cache_on_block
-    
-    render json: {
-      result: numbers_to_strings(balance.to_s)
-    }
+    cache_on_block do
+      render json: {
+        result: numbers_to_strings(balance.to_s)
+      }
+    end
   end
   
   def balances_observations
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
     
-    cache_on_block
-    
-    render json: {
-      result: numbers_to_strings(token.balances_observations)
-    }
+    cache_on_block do
+      render json: {
+        result: numbers_to_strings(token.balances_observations)
+      }
+    end
   end
   
   def validate_token_items
@@ -79,17 +79,17 @@ class TokensController < ApplicationController
     
     invalid_tx_hashes = tx_hashes.sort - valid_tx_hashes.sort
     
-    cache_on_block
-    
-    res = {
-      valid: valid_tx_hashes,
-      invalid: invalid_tx_hashes,
-      token_items_checksum: token.token_items_checksum
-    }
-    
-    render json: {
-      result: numbers_to_strings(res),
-      pagination: pagination_response
-    }
+    cache_on_block do
+      res = {
+        valid: valid_tx_hashes,
+        invalid: invalid_tx_hashes,
+        token_items_checksum: token.token_items_checksum
+      }
+      
+      render json: {
+        result: numbers_to_strings(res),
+        pagination: pagination_response
+      }
+    end
   end
 end

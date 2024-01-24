@@ -1,6 +1,13 @@
 class EthBlock < ApplicationRecord
+  include OrderQuery
   class BlockNotReadyToImportError < StandardError; end
-
+  
+  order_query :newest_first,
+    [:block_number, :desc, unique: true]
+  
+  order_query :oldest_first,
+    [:block_number, :asc, unique: true]
+    
   %i[
     eth_transactions
     ethscriptions
@@ -13,10 +20,15 @@ class EthBlock < ApplicationRecord
       inverse_of: :eth_block
   end
   
-  scope :newest_first, -> { order(block_number: :desc) }
-  scope :oldest_first, -> { order(block_number: :asc) }
-  
   before_validation :set_attestation_hash, if: -> { imported_at.present? }
+  
+  def self.find_by_page_key(...)
+    find_by_block_number(...)
+  end
+  
+  def page_key
+    block_number
+  end
     
   def self.ethereum_client
     @_ethereum_client ||= begin
@@ -42,6 +54,10 @@ class EthBlock < ApplicationRecord
   
   def self.most_recently_imported_block_number
     EthBlock.where.not(imported_at: nil).order(block_number: :desc).limit(1).pluck(:block_number).first
+  end
+  
+  def self.most_recently_imported_blockhash
+    EthBlock.where.not(imported_at: nil).order(block_number: :desc).limit(1).pluck(:blockhash).first
   end
   
   def self.import_batch_size
@@ -187,13 +203,13 @@ class EthBlock < ApplicationRecord
   end
   
   def self.uncached_global_block_number
-    ethereum_client.get_block_number
+    ethereum_client.get_block_number.tap do |block_number|
+      Rails.cache.write('global_block_number', block_number, expires_in: 1.second)
+    end
   end
   
   def self.cached_global_block_number
-    Rails.cache.fetch('global_block_number', expires_in: 3.seconds) do
-      uncached_global_block_number
-    end
+    Rails.cache.read('global_block_number') || uncached_global_block_number
   end
   
   def self.validate_ready_to_import!(block_by_number_response, receipts_response)

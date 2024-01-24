@@ -1,4 +1,15 @@
 class EthscriptionTransfer < ApplicationRecord
+  include OrderQuery
+  order_query :newest_first,
+    [:block_number, :desc],
+    [:transaction_index, :desc],
+    [:transfer_index, :desc, unique: true]
+  
+  order_query :oldest_first,
+    [:block_number, :asc],
+    [:transaction_index, :asc],
+    [:transfer_index, :asc, unique: true]
+  
   belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
     inverse_of: :ethscription_transfers
   belongs_to :eth_transaction, foreign_key: :transaction_hash, primary_key: :transaction_hash, optional: true,
@@ -8,17 +19,21 @@ class EthscriptionTransfer < ApplicationRecord
     
   after_create :create_ownership_version!, :notify_eth_transaction
   
-  scope :newest_first, -> { order(
-    block_number: :desc,
-    transaction_index: :desc,
-    transfer_index: :desc
-  )}
+  def page_key
+    [block_number, transaction_index, transfer_index].join("-")
+  end
   
-  scope :oldest_first, -> { order(
-    block_number: :asc,
-    transaction_index: :asc,
-    transfer_index: :asc
-  )}
+  def self.find_by_page_key(page_key)
+    return if page_key.blank?
+    
+    block_number, transaction_index, transfer_index = page_key.split("-")
+    
+    find_by(
+      block_number: block_number,
+      transaction_index: transaction_index,
+      transfer_index: transfer_index
+    )
+  end
   
   def notify_eth_transaction
     if eth_transaction.transfer_index.nil?

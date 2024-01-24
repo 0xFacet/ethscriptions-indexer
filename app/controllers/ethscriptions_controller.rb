@@ -1,17 +1,52 @@
 class EthscriptionsController < ApplicationController
   def index
-    page = (params[:page] || 1).to_i.clamp(1, 10)
-    per_page = (params[:per_page] || 25).to_i.clamp(1, 50)
+    scope = filter_by_params(Ethscription.all,
+      :current_owner,
+      :creator,
+      :previous_owner,
+      :mimetype,
+      :media_type,
+      :mime_subtype,
+      :sha,
+      :transaction_hash,
+      :block_number,
+      :ethscription_number
+    )
+
+    include_latest_transfer = params[:include_latest_transfer].present?
     
-    scope = Ethscription.all.page(page).per(per_page).includes(:ethscription_transfers)
-    
-    scope = params[:sort_order]&.downcase == "asc" ? scope.oldest_first : scope.newest_first
-    
-    ethscriptions = Rails.cache.fetch(["ethscription-api-all", scope]) do
-      scope.to_a
+    if include_latest_transfer
+      scope = scope.includes(:ethscription_transfers)
     end
     
-    render json: ethscriptions
+    token_tick = parse_param_array(params[:token_tick]).first
+    token_protocol = parse_param_array(params[:token_protocol]).first
+    transferred_in_tx = parse_param_array(params[:transferred_in_tx])
+    
+    if token_tick && token_protocol
+      scope = scope.with_token_tick_and_protocol(token_tick, token_protocol)
+    end
+    
+    if transferred_in_tx.present?
+      sub_query = EthscriptionTransfer.where(transaction_hash: transferred_in_tx).select(:ethscription_transaction_hash)
+      scope = scope.where(transaction_hash: sub_query)
+    end
+    
+    results, pagination_response = paginate(
+      scope,
+      results_limit: include_latest_transfer ? 50 : 100
+    )
+    
+    cache_on_block do
+      results = results.map do |ethscription|
+        ethscription.as_json(include_latest_transfer: include_latest_transfer)
+      end
+      
+      render json: {
+        result: numbers_to_strings(results),
+        pagination: pagination_response
+      }
+    end
   end
   
   def show
@@ -20,8 +55,8 @@ class EthscriptionsController < ApplicationController
     id_or_hash = params[:id].to_s.downcase
     
     scope = id_or_hash.match?(/\A0x[0-9a-f]{64}\z/) ? 
-      scope.where(transaction_hash: params[:id]) : 
-      scope.where(ethscription_number: params[:id])
+      scope.where(transaction_hash: id_or_hash) : 
+      scope.where(ethscription_number: id_or_hash)
     
     ethscription = Rails.cache.fetch(["ethscription-api-show", scope]) do
       scope.first
@@ -32,7 +67,11 @@ class EthscriptionsController < ApplicationController
       return
     end
     
-    render json: ethscription.as_json(include_transfers: true)
+    cache_on_block do
+      render json: {
+        result: numbers_to_strings(ethscription.as_json(include_transfers: true))
+      }
+    end
   end
   
   def data
@@ -41,15 +80,18 @@ class EthscriptionsController < ApplicationController
     id_or_hash = params[:id].to_s.downcase
     
     scope = id_or_hash.match?(/\A0x[0-9a-f]{64}\z/) ? 
-      scope.where(transaction_hash: params[:id]) : 
-      scope.where(ethscription_number: params[:id])
+      scope.where(transaction_hash: id_or_hash) : 
+      scope.where(ethscription_number: id_or_hash)
     
     item = scope.first
     
+    
     if item
-      uri_obj = item.parsed_data_uri
+      cache_on_block(cache_forever_with: item.block_number) do
+        uri_obj = item.parsed_data_uri
       
-      send_data(uri_obj.decoded_data, type: uri_obj.mimetype, disposition: 'inline')
+        send_data(uri_obj.decoded_data, type: uri_obj.mimetype, disposition: 'inline')
+      end
     else
       head 404
     end
@@ -168,10 +210,12 @@ class EthscriptionsController < ApplicationController
     end
     
     total_ethscriptions_in_future_blocks = scope.where('block_number > ?', block_range.last).count
-  
-    render json: {
-      total_future_ethscriptions: total_ethscriptions_in_future_blocks,
-      blocks: block_data
-    }
+    
+    cache_on_block do
+      render json: {
+        total_future_ethscriptions: total_ethscriptions_in_future_blocks,
+        blocks: block_data
+      }
+    end
   end
 end

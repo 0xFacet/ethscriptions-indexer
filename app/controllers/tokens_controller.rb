@@ -23,9 +23,16 @@ class TokensController < ApplicationController
       return
     end
     
+    balances = token.current_balances
+    
+    if balances.blank?
+      render json: { error: "Balances not indexed, try again in a few minutes" }, status: 422
+      return
+    end
+    
     cache_on_block do
       render json: {
-        result: numbers_to_strings(token.balances(params[:as_of_block_number]&.to_i))
+        result: numbers_to_strings(balances)
       }
     end
   end
@@ -38,10 +45,12 @@ class TokensController < ApplicationController
       return
     end
     
-    balance = token.balance_of(
-      address: params[:address]&.downcase,
-      as_of_block_number: params[:as_of_block_number]&.to_i
-    )
+    balance = token.balance_of(params[:address])
+      
+    if balance.blank?
+      render json: { error: "Balance not available, try again in a few minutes" }, status: 422
+      return
+    end
     
     cache_on_block do
       render json: {

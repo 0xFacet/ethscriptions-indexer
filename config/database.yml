@@ -23,19 +23,19 @@ default: &default
   # To create additional roles in PostgreSQL see `$ createuser --help`.
   # When left blank, PostgreSQL will use the default role. This is
   # the same name as the operating system user running Rails.
-  username: <%= ENV["ETHS_INDEXER_DATABASE_USERNAME"] %>
+  username: <%= ENV["DATABASE_USERNAME"] %>
 
   # The password associated with the PostgreSQL role (username).
-  password: <%= ENV["ETHS_INDEXER_DATABASE_PASSWORD"] %>
+  password: <%= ENV["DATABASE_PASSWORD"] %>
 
   # Connect on a TCP socket. Omitted by default since the client uses a
   # domain socket that doesn't need configuration. Windows does not have
   # domain sockets, so uncomment these lines.
-  host: <%= ENV["ETHS_INDEXER_DATABASE_HOST"] %>
+  host: <%= ENV["DATABASE_HOST"] %>
 
   # The TCP port the server listens on. Defaults to 5432.
   # If your server runs on a different port number, change accordingly.
-  port: <%= ENV["ETHS_INDEXER_DATABASE_PORT"] %>
+  port: <%= ENV["DATABASE_PORT"] %>
 
   # Instead, provide the password or a full connection URL as an environment
   # variable when you boot the app. For example:
@@ -48,11 +48,11 @@ default: &default
   # URL environment variable explicitly:
   #
   #   production:
-  #     url: <%= ENV["ETHS_INDEXER_DATABASE_URL"] %>
+  #     url: <%= ENV["DATABASE_URL"] %>
   #
   # Read https://guides.rubyonrails.org/configuring.html#configuring-a-database
   # for a full overview on how database connection configuration can be specified.
-  url: <%= ENV["ETHS_INDEXER_DATABASE_URL"] %>
+  url: <%= ENV["DATABASE_URL"] %>
 
 development:
   <<: *default

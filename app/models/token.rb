@@ -157,7 +157,7 @@ class Token < ApplicationRecord
   
       balances_observations.unshift(snapshot)
   
-      balances_observations.pop if balances_observations.size > 1
+      balances_observations.pop if balances_observations.size > 5
   
       update!(balances_observations: balances_observations)
     end

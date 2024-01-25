@@ -66,6 +66,16 @@ class TokensController < ApplicationController
     end
   end
   
+  def balances_observations
+    token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
+
+    cache_on_block do
+      render json: {
+        result: numbers_to_strings(token.balances_observations)
+      }
+    end
+  end
+  
   def validate_token_items
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
 

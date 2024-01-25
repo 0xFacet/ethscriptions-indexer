@@ -5,12 +5,28 @@ class TokensController < ApplicationController
       :tick
     )
     
-    results, pagination_response = paginate(scope)
-    
     cache_on_block do
+      results, pagination_response = paginate(scope)
+      
       render json: {
         result: numbers_to_strings(results),
         pagination: pagination_response
+      }
+    end
+  end
+  
+  def show
+    token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
+    
+    cache_on_block do
+      json = token.as_json(
+        include_last_balance_change_block: true,
+        include_balances_observations: true
+      )
+      
+      render json: {
+        result: numbers_to_strings(json),
+        pagination: {}
       }
     end
   end
@@ -50,16 +66,6 @@ class TokensController < ApplicationController
     end
   end
   
-  def balances_observations
-    token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
-    
-    cache_on_block do
-      render json: {
-        result: numbers_to_strings(token.balances_observations)
-      }
-    end
-  end
-  
   def validate_token_items
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
 
@@ -69,17 +75,17 @@ class TokensController < ApplicationController
       parse_param_array(params[:transaction_hashes])
     end
     
-    valid_tx_hash_scope = token.token_items.where(
-      ethscription_transaction_hash: tx_hashes
-    )
-    
-    results, pagination_response = paginate(valid_tx_hash_scope)
-    
-    valid_tx_hashes = results.map(&:ethscription_transaction_hash)
-    
-    invalid_tx_hashes = tx_hashes.sort - valid_tx_hashes.sort
-    
     cache_on_block do
+      valid_tx_hash_scope = token.token_items.where(
+        ethscription_transaction_hash: tx_hashes
+      )
+      
+      results, pagination_response = paginate(valid_tx_hash_scope)
+      
+      valid_tx_hashes = results.map(&:ethscription_transaction_hash)
+      
+      invalid_tx_hashes = tx_hashes.sort - valid_tx_hashes.sort
+      
       res = {
         valid: valid_tx_hashes,
         invalid: invalid_tx_hashes,

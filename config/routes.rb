@@ -18,6 +18,8 @@ Rails.application.routes.draw do
     
     resources :tokens, only: [:index] do
       collection do
+        get "/:protocol/:tick", to: "tokens#show"
+        
         get "/balance_of", to: "tokens#balance_of"
         get "/balances", to: "tokens#balances"
         get "/balances_observations", to: "tokens#balances_observations"

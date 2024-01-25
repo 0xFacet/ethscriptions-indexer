@@ -130,6 +130,13 @@ class Token < ApplicationRecord
     end
   end
   
+  def last_balance_change_block
+    sq = token_items.select(:ethscription_transaction_hash)
+
+    EthscriptionTransfer.where(ethscription_transaction_hash: sq).
+      newest_first.limit(1).pluck(:block_number).first
+  end
+  
   def take_balances_snapshot
     with_lock do
       balance_map, latest_block_number, latest_block_hash = token_balances
@@ -256,6 +263,14 @@ class Token < ApplicationRecord
   end
   
   def as_json(options = {})
-    super(options.merge(except: [:balances_observations]))
+    super(options.merge(except: [:balances_observations])).tap do |json|
+      if options[:include_last_balance_change_block]
+        json[:last_balance_change_block] = last_balance_change_block
+      end
+      
+      if options[:include_balances_observations]
+        json[:balances_observations] = balances_observations
+      end
+    end
   end
 end

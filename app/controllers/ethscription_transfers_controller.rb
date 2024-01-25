@@ -25,9 +25,9 @@ class EthscriptionTransfersController < ApplicationController
       scope = scope.where(ethscription_transaction_hash: tokens)
     end
     
-    results, pagination_response = paginate(scope)
-    
     cache_on_block do
+      results, pagination_response = paginate(scope)
+      
       render json: {
         result: numbers_to_strings(results),
         pagination: pagination_response

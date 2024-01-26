@@ -23,6 +23,8 @@ RSpec.describe Token, type: :model do
       
       transfer_tx = nil
       
+      token_item_count = TokenItem.count
+      
       expect { transfer_tx = EthscriptionTestHelper.create_eth_transaction(
         input: "data:,{\"p\":\"erc-20\",\"op\":\"mint\",\"tick\":\"nodes\",\"id\":\"335997\",\"amt\":\"10000\"}",
         from: "0xC2172a6315c1D7f6855768F843c420EbB36eDa97",
@@ -32,6 +34,8 @@ RSpec.describe Token, type: :model do
 
       transfer = transfer_tx.ethscription_transfers.first
 
+      expect(TokenItem.count).to eq(token_item_count + 1)
+      
       expect(token.reload.total_supply).to eq(initial_total_supply + token.mint_amount)
 
       expect(token.reload.balances).to eq({ transfer.to_address => token.mint_amount })
@@ -65,8 +69,12 @@ RSpec.describe Token, type: :model do
         logs: []
       )
       
-      expect { transfer_tx.delete }.to change { TokenState.count }.by(-1)
+      token_item_count = TokenItem.count
+      
+      expect { transfer_tx.eth_block.delete }.to change { TokenState.count }.by(-1)
 
+      expect(TokenItem.count).to eq(token_item_count - 1)
+      
       # Reload the token to get the updated state
       token.reload
 
@@ -128,11 +136,10 @@ RSpec.describe Token, type: :model do
     expect(token.total_supply).to eq(token.mint_amount)
 
     expect(token.balances).to eq({
-      first_transfer.to_address => 0,
       second_transfer.to_address => token.mint_amount
     })
     
-    second_transfer_tx.delete
+    second_transfer_tx.eth_block.delete
     
     expect(token.reload.total_supply).to eq(token.mint_amount)
     

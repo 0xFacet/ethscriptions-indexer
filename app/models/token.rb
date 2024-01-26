@@ -67,46 +67,61 @@ class Token < ApplicationRecord
     token
   end
   
-  def self.process_ethscription_transfer(transfer)
-    token = find_by_ethscription(transfer.ethscription)
-    return unless token.present?
+  def self.process_block(block)
+    all_tokens = Token.all.to_a
+    
+    return unless all_tokens.present?
+    
+    # Find all transfers within the given block number
+    transfers = EthscriptionTransfer.where(block_number: block.block_number).includes(:ethscription)
 
-    total_supply = token.total_supply.to_i
-    balances = Hash.new(0).merge(token.balances.deep_dup)
+    # Group transfers by token
+    transfers_by_token = transfers.group_by do |transfer|
+      all_tokens.detect { |token| token.ethscription_is_token_item?(transfer.ethscription) }
+    end
     
-    balances[transfer.to_address] += token.mint_amount
+    new_token_items = []
     
-    if transfer.is_first_transfer?
-      total_supply += token.mint_amount
-      token.token_items.create!(
-        ethscription_transaction_hash: transfer.ethscription_transaction_hash,
-        token_item_id: token.ethscription_is_token_item?(transfer.ethscription),
-        block_number: transfer.block_number,
-        transaction_index: transfer.transaction_index
+    # Process each token's transfers as a batch
+    transfers_by_token.each do |token, transfers|
+      next unless token.present?
+
+      # Start with the current state
+      total_supply = token.total_supply.to_i
+      balances = Hash.new(0).merge(token.balances.deep_dup)
+
+      # Apply all transfers to the state
+      transfers.each do |transfer|
+        balances[transfer.to_address] += token.mint_amount
+        
+        if transfer.is_first_transfer?
+          total_supply += token.mint_amount
+          # Prepare token item for bulk import
+          new_token_items << TokenItem.new(
+            deploy_ethscription_transaction_hash: token.deploy_ethscription_transaction_hash,
+            ethscription_transaction_hash: transfer.ethscription_transaction_hash,
+            token_item_id: token.ethscription_is_token_item?(transfer.ethscription),
+            block_number: transfer.block_number,
+            transaction_index: transfer.transaction_index
+          )
+        else
+          balances[transfer.from_address] -= token.mint_amount
+        end
+      end
+
+      balances.delete_if { |address, amount| amount == 0 }
+      
+      # Create a single state change for the block
+      token.token_states.create!(
+        total_supply: total_supply,
+        balances: balances,
+        block_number: block.block_number,
+        block_timestamp: block.timestamp,
+        block_blockhash: block.blockhash,
       )
-    else
-      balances[transfer.from_address] -= token.mint_amount
     end
     
-    attrs = {
-      total_supply: total_supply,
-      balances: balances,
-    }.merge(transfer.slice(
-      :transaction_hash,
-      :block_number,
-      :block_timestamp,
-      :block_blockhash,
-      :transaction_index,
-      :transfer_index
-    ))
-    
-    token.token_states.create!(attrs)
-  end
-  
-  def self.find_by_ethscription(ethscription)
-    Token.all.detect do |token|
-      token.ethscription_is_token_item?(ethscription)
-    end
+    TokenItem.import!(new_token_items) if new_token_items.present?
   end
   
   def ethscription_is_token_item?(ethscription)
@@ -224,19 +239,13 @@ class Token < ApplicationRecord
     latest_block_hash = balances.first&.latest_block_hash
     
     if latest_block_number > last_transfer.block_number
-      attrs = {
+      token_states.create!(
         total_supply: balance_map.values.sum,
         balances: balance_map,
         block_number: latest_block_number,
         block_blockhash: latest_block_hash,
         block_timestamp: EthBlock.where(block_number: latest_block_number).pick(:timestamp),
-      }.merge(last_transfer.slice(
-        :transaction_hash,
-        :transaction_index,
-        :transfer_index
-      ))
-      
-      token_states.create!(attrs)
+      )
     end
   end
   

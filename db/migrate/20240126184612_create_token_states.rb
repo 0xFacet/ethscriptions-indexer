@@ -11,30 +11,22 @@ class CreateTokenStates < ActiveRecord::Migration[7.1]
     
     create_table :token_states do |t|
       t.bigint :block_number, null: false
-      
-      t.string :transaction_hash, null: false
-      t.bigint :transaction_index, null: false
-      t.bigint :transfer_index, null: false
-
       t.bigint :block_timestamp, null: false
       t.string :block_blockhash, null: false
 
       t.string :deploy_ethscription_transaction_hash, null: false
       
       t.jsonb :balances, null: false, default: {}
-      t.bigint :total_supply, null: false
+      t.bigint :total_supply, null: false, default: 0
       
       t.index :deploy_ethscription_transaction_hash
-      t.index [:transaction_hash, :transfer_index], unique: true
-      t.index [:block_number, :transaction_index, :transfer_index], unique: true
+      t.index [:block_number, :deploy_ethscription_transaction_hash], unique: true
       
       t.check_constraint "deploy_ethscription_transaction_hash ~ '^0x[a-f0-9]{64}$'"
-      t.check_constraint "transaction_hash ~ '^0x[a-f0-9]{64}$'"
       t.check_constraint "block_blockhash ~ '^0x[a-f0-9]{64}$'"
       
       t.foreign_key :eth_blocks, column: :block_number, primary_key: :block_number, on_delete: :cascade
       t.foreign_key :tokens, column: :deploy_ethscription_transaction_hash, primary_key: :deploy_ethscription_transaction_hash, on_delete: :cascade
-      t.foreign_key :eth_transactions, column: :transaction_hash, primary_key: :transaction_hash, on_delete: :cascade
       
       t.timestamps
     end
@@ -48,7 +40,7 @@ class CreateTokenStates < ActiveRecord::Migration[7.1]
           SELECT INTO latest_token_state *
           FROM token_states
           WHERE deploy_ethscription_transaction_hash = NEW.deploy_ethscription_transaction_hash
-          ORDER BY block_number DESC, transaction_index DESC, transfer_index DESC
+          ORDER BY block_number DESC
           LIMIT 1;
 
           UPDATE tokens
@@ -61,7 +53,7 @@ class CreateTokenStates < ActiveRecord::Migration[7.1]
           FROM token_states
           WHERE deploy_ethscription_transaction_hash = OLD.deploy_ethscription_transaction_hash
             AND id != OLD.id
-          ORDER BY block_number DESC, transaction_index DESC, transfer_index DESC
+          ORDER BY block_number DESC
           LIMIT 1;
 
           UPDATE tokens

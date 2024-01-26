@@ -187,6 +187,8 @@ class EthBlock < ApplicationRecord
       
       EthTransaction.prune_transactions(block_number)
       
+      Token.process_block(block_record)
+      
       block_record.update!(imported_at: Time.current)
       
       puts "Block Importer: imported block #{block_number}"

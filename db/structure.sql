@@ -208,7 +208,7 @@ CREATE FUNCTION public.update_token_balances_and_supply() RETURNS trigger
           SELECT INTO latest_token_state *
           FROM token_states
           WHERE deploy_ethscription_transaction_hash = NEW.deploy_ethscription_transaction_hash
-          ORDER BY block_number DESC, transaction_index DESC, transfer_index DESC
+          ORDER BY block_number DESC
           LIMIT 1;
 
           UPDATE tokens
@@ -221,7 +221,7 @@ CREATE FUNCTION public.update_token_balances_and_supply() RETURNS trigger
           FROM token_states
           WHERE deploy_ethscription_transaction_hash = OLD.deploy_ethscription_transaction_hash
             AND id != OLD.id
-          ORDER BY block_number DESC, transaction_index DESC, transfer_index DESC
+          ORDER BY block_number DESC
           LIMIT 1;
 
           UPDATE tokens
@@ -587,17 +587,13 @@ ALTER SEQUENCE public.token_items_id_seq OWNED BY public.token_items.id;
 CREATE TABLE public.token_states (
     id bigint NOT NULL,
     block_number bigint NOT NULL,
-    transaction_hash character varying NOT NULL,
-    transaction_index bigint NOT NULL,
-    transfer_index bigint NOT NULL,
     block_timestamp bigint NOT NULL,
     block_blockhash character varying NOT NULL,
     deploy_ethscription_transaction_hash character varying NOT NULL,
     balances jsonb DEFAULT '{}'::jsonb NOT NULL,
-    total_supply bigint NOT NULL,
+    total_supply bigint DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT chk_rails_0380c818e3 CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_8b7e9525c6 CHECK (((deploy_ethscription_transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_97e78ee6f4 CHECK (((block_blockhash)::text ~ '^0x[a-f0-9]{64}$'::text))
 );
@@ -828,17 +824,17 @@ CREATE INDEX delayed_jobs_priority ON public.delayed_jobs USING btree (priority,
 
 
 --
+-- Name: idx_on_block_number_deploy_ethscription_transaction_4559fe945a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_on_block_number_deploy_ethscription_transaction_4559fe945a ON public.token_states USING btree (block_number, deploy_ethscription_transaction_hash);
+
+
+--
 -- Name: idx_on_block_number_transaction_index_event_log_ind_94b2c4b953; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX idx_on_block_number_transaction_index_event_log_ind_94b2c4b953 ON public.ethscription_transfers USING btree (block_number, transaction_index, event_log_index);
-
-
---
--- Name: idx_on_block_number_transaction_index_transfer_inde_295083c695; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX idx_on_block_number_transaction_index_transfer_inde_295083c695 ON public.token_states USING btree (block_number, transaction_index, transfer_index);
 
 
 --
@@ -1346,13 +1342,6 @@ CREATE INDEX index_token_states_on_deploy_ethscription_transaction_hash ON publi
 
 
 --
--- Name: index_token_states_on_transaction_hash_and_transfer_index; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_token_states_on_transaction_hash_and_transfer_index ON public.token_states USING btree (transaction_hash, transfer_index);
-
-
---
 -- Name: index_tokens_on_deploy_ethscription_transaction_hash; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1501,14 +1490,6 @@ ALTER TABLE ONLY public.ethscription_transfers
 
 ALTER TABLE ONLY public.token_states
     ADD CONSTRAINT fk_rails_c99350f4d3 FOREIGN KEY (block_number) REFERENCES public.eth_blocks(block_number) ON DELETE CASCADE;
-
-
---
--- Name: token_states fk_rails_d43df90a0b; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.token_states
-    ADD CONSTRAINT fk_rails_d43df90a0b FOREIGN KEY (transaction_hash) REFERENCES public.eth_transactions(transaction_hash) ON DELETE CASCADE;
 
 
 --

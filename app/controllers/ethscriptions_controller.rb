@@ -32,10 +32,24 @@ class EthscriptionsController < ApplicationController
       scope = scope.where(transaction_hash: sub_query)
     end
     
+    transaction_hash_only = params[:transaction_hash_only].present?
+    
+    if transaction_hash_only
+      scope = scope.select(:id, :transaction_hash)
+    end
+    
+    results_limit = if transaction_hash_only
+      1000
+    elsif include_latest_transfer
+      50
+    else
+      100
+    end
+    
     cache_on_block do
       results, pagination_response = paginate(
         scope,
-        results_limit: include_latest_transfer ? 50 : 100
+        results_limit: results_limit
       )
       
       results = results.map do |ethscription|

@@ -28,6 +28,22 @@ class TokensController < ApplicationController
     end
   end
   
+  def historical_state
+    as_of_block = params[:as_of_block].to_i
+    token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
+    
+    cache_on_block do
+      state = token.token_states.
+        where("block_number <= ?", as_of_block).
+        newest_first.limit(1).first
+      
+      render json: {
+        result: numbers_to_strings(state),
+        pagination: {}
+      }
+    end
+  end
+  
   def balance_of
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
     

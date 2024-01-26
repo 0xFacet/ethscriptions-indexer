@@ -20,6 +20,8 @@ class Token < ApplicationRecord
     inverse_of: :token,
     optional: true
   
+  has_many :token_states, foreign_key: :deploy_ethscription_transaction_hash, primary_key: :deploy_ethscription_transaction_hash, inverse_of: :token
+
   scope :minted_out, -> { where("total_supply = max_supply") }
   scope :not_minted_out, -> { where("total_supply < max_supply") }
   
@@ -56,6 +58,65 @@ class Token < ApplicationRecord
     )
   end
   
+  def self.process_ethscription_transfer(transfer)
+    token = find_by_ethscription(transfer.ethscription)
+    return unless token.present?
+
+    total_supply = token.total_supply.to_i
+    balances = Hash.new(0).merge(token.balances.deep_dup)
+    
+    balances[transfer.to_address] += token.mint_amount
+    
+    if transfer.is_first_transfer?
+      total_supply += token.mint_amount
+      token.token_items.create!(
+        ethscription_transaction_hash: transfer.ethscription_transaction_hash,
+        token_item_id: token.ethscription_is_token_item?(transfer.ethscription),
+        block_number: transfer.block_number,
+        transaction_index: transfer.transaction_index
+      )
+    else
+      balances[transfer.from_address] -= token.mint_amount
+    end
+    
+    attrs = {
+      total_supply: total_supply,
+      balances: balances,
+    }.merge(transfer.slice(
+      :transaction_hash,
+      :block_number,
+      :block_timestamp,
+      :block_blockhash,
+      :transaction_index,
+      :transfer_index
+    ))
+    
+    token.token_states.create!(attrs)
+  end
+  
+  def self.find_by_ethscription(ethscription)
+    Token.all.detect do |token|
+      token.ethscription_is_token_item?(ethscription)
+    end
+  end
+  
+  def ethscription_is_token_item?(ethscription)
+    regex = /\Adata:,\{"p":"#{Regexp.escape(protocol)}","op":"mint","tick":"#{Regexp.escape(tick)}","id":"([1-9][0-9]{0,#{trailing_digit_count}})","amt":"#{mint_amount.to_i}"\}\z/
+    
+    id = ethscription.content_uri[regex, 1]
+
+    valid = id.to_i.between?(1, max_id) &&
+    (ethscription.block_number > deploy_block_number ||
+    (ethscription.block_number == deploy_block_number &&
+    ethscription.transaction_index > deploy_transaction_index))
+    
+    return id.to_i if valid
+  end
+  
+  def trailing_digit_count
+    max_id.to_i.to_s.length - 1
+  end
+  
   def sync_token_items!
     return if minted_out?
     
@@ -68,8 +129,6 @@ class Token < ApplicationRecord
       raise "Invalid protocol format: #{protocol.inspect}"
     end
     quoted_protocol = ActiveRecord::Base.connection.quote_string(protocol)
-    
-    trailing_digit_count = max_id.to_i.to_s.length - 1
 
     regex = %Q{^data:,{"p":"#{quoted_protocol}","op":"mint","tick":"#{quoted_tick}","id":"([1-9][0-9]{0,#{trailing_digit_count}})","amt":"#{mint_amount.to_i}"}$}
 

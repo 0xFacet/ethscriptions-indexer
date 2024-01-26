@@ -17,7 +17,21 @@ class EthscriptionTransfer < ApplicationRecord
   belongs_to :ethscription, foreign_key: :ethscription_transaction_hash, primary_key: :transaction_hash, optional: true,
     inverse_of: :ethscription_transfers
     
-  after_create :create_ownership_version!, :notify_eth_transaction
+  after_create :create_ownership_version!, :notify_eth_transaction, :process_token_action
+  
+  def process_token_action
+    return unless token_processing_enabled?
+    
+    Token.process_ethscription_transfer(self)
+  end
+  
+  def token_processing_enabled?
+    true
+  end
+  
+  def is_first_transfer?
+    !EthscriptionTransfer.where.not(id: id).exists?(ethscription_transaction_hash: ethscription_transaction_hash)
+  end
   
   def page_key
     [block_number, transaction_index, transfer_index].join("-")

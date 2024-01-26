@@ -32,7 +32,7 @@ class EthscriptionsController < ApplicationController
       scope = scope.where(transaction_hash: sub_query)
     end
     
-    transaction_hash_only = params[:transaction_hash_only].present?
+    transaction_hash_only = params[:transaction_hash_only].present? && !include_latest_transfer
     
     if transaction_hash_only
       scope = scope.select(:id, :transaction_hash)

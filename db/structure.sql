@@ -10,6 +10,34 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: heroku_ext; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA heroku_ext;
+
+
+--
+-- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON SCHEMA public IS '';
+
+
+--
+-- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA heroku_ext;
+
+
+--
+-- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
+
+
+--
 -- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
 --
 
@@ -178,11 +206,11 @@ CREATE FUNCTION public.update_total_supply() RETURNS trigger
         SET total_supply = (
           SELECT COUNT(*) * mint_amount
           FROM token_items
-          WHERE deploy_ethscription_transaction_hash = NEW.deploy_ethscription_transaction_hash
+          WHERE deploy_ethscription_transaction_hash = OLD.deploy_ethscription_transaction_hash
         )
-        WHERE deploy_ethscription_transaction_hash = NEW.deploy_ethscription_transaction_hash;
+        WHERE deploy_ethscription_transaction_hash = OLD.deploy_ethscription_transaction_hash;
 
-        RETURN NEW;
+        RETURN OLD;
       END;
       $$;
 
@@ -543,11 +571,11 @@ CREATE TABLE public.tokens (
     protocol character varying(1000) NOT NULL,
     tick character varying(1000) NOT NULL,
     max_supply bigint NOT NULL,
-    total_supply bigint DEFAULT 0 NOT NULL,
+    total_supply bigint NOT NULL,
     mint_amount bigint NOT NULL,
-    balances_observations jsonb DEFAULT '[]'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    balances_snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT chk_rails_31c1808af4 CHECK (((tick)::text ~ '^[[:alnum:]p{Emoji_Presentation}]+$'::text)),
     CONSTRAINT chk_rails_3458514b65 CHECK (((deploy_ethscription_transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_3d55d7040f CHECK (((max_supply % mint_amount) = 0)),
@@ -1391,6 +1419,7 @@ ALTER TABLE ONLY public.token_items
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20240126162132'),
 ('20240115192312'),
 ('20240115151119'),
 ('20240115144930'),

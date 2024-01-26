@@ -21,7 +21,7 @@ class TokensController < ApplicationController
     cache_on_block do
       json = token.as_json(
         include_last_balance_change_block: true,
-        include_balances_observations: true
+        include_balances_snapshot: true
       )
       
       render json: {
@@ -71,16 +71,6 @@ class TokensController < ApplicationController
     cache_on_block do
       render json: {
         result: numbers_to_strings(balance.to_s)
-      }
-    end
-  end
-  
-  def balances_observations
-    token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
-
-    cache_on_block do
-      render json: {
-        result: numbers_to_strings(token.balances_observations)
       }
     end
   end

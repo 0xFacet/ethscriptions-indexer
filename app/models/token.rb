@@ -138,10 +138,9 @@ class Token < ApplicationRecord
   end
   
   def current_balances
-    most_recent_balances_snapshot = balances_observations.first
-    
-    if most_recent_balances_snapshot['as_of_block_number'] > last_balance_change_block
-      return most_recent_balances_snapshot['balances']
+    if balances_snapshot['as_of_block_number'] > last_balance_change_block &&
+      EthBlock.exists?(blockhash: balances_snapshot['as_of_blockhash'])
+      return balances_snapshot['balances']
     end
     
     take_balances_snapshot_no_duplicate_jobs
@@ -159,29 +158,8 @@ class Token < ApplicationRecord
         as_of_blockhash: latest_block_hash
       }.with_indifferent_access
   
-      existing_snapshot = balances_observations.find { |b| b['as_of_block_number'] == latest_block_number }
-  
-      if existing_snapshot
-        return if existing_snapshot['as_of_blockhash'] == latest_block_hash
-  
-        balances_observations.delete(existing_snapshot)
-      end
-  
-      balances_observations.unshift(snapshot)
-  
-      balances_observations.pop if balances_observations.size > 5
-  
-      update!(balances_observations: balances_observations)
+      update!(balances_snapshot: snapshot)
     end
-  end
-  
-  def balances_observation(as_of_block_number = nil)
-    if as_of_block_number
-      snapshot = balances_observations.detect { |b| b['as_of_block_number'] == as_of_block_number }
-      return snapshot || {}
-    end
-  
-    balances_observations.first || {}
   end
   
   def balance_of(address)
@@ -272,13 +250,13 @@ class Token < ApplicationRecord
   end
   
   def as_json(options = {})
-    super(options.merge(except: [:balances_observations])).tap do |json|
+    super(options.merge(except: [:balances_snapshot])).tap do |json|
       if options[:include_last_balance_change_block]
         json[:last_balance_change_block] = last_balance_change_block
       end
       
-      if options[:include_balances_observations]
-        json[:balances_observations] = balances_observations
+      if options[:include_balances_snapshot]
+        json[:balances_snapshot] = balances_snapshot
       end
     end
   end

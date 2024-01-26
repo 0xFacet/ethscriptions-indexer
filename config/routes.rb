@@ -21,7 +21,6 @@ Rails.application.routes.draw do
         get "/:protocol/:tick", to: "tokens#show"
         
         get "/balance_of", to: "tokens#balance_of"
-        get "/balances", to: "tokens#balances"
         
         get "/validate_token_items", to: "tokens#validate_token_items"
         post "/validate_token_items", to: "tokens#validate_token_items"

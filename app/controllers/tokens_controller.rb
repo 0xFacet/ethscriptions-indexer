@@ -19,36 +19,11 @@ class TokensController < ApplicationController
     token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
     
     cache_on_block do
-      json = token.as_json(
-        include_last_balance_change_block: true,
-        include_balances_snapshot: true
-      )
+      json = token.as_json(include_balances: true)
       
       render json: {
         result: numbers_to_strings(json),
         pagination: {}
-      }
-    end
-  end
-  
-  def balances
-    token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
-    
-    if !token
-      render json: { error: "Not found" }, status: 404
-      return
-    end
-    
-    balances = token.current_balances
-    
-    if balances.blank?
-      render json: { error: "Balances not indexed, try again in a few minutes" }, status: 422
-      return
-    end
-    
-    cache_on_block do
-      render json: {
-        result: numbers_to_strings(balances)
       }
     end
   end
@@ -62,11 +37,6 @@ class TokensController < ApplicationController
     end
     
     balance = token.balance_of(params[:address])
-      
-    if balance.blank?
-      render json: { error: "Balance not available, try again in a few minutes" }, status: 422
-      return
-    end
     
     cache_on_block do
       render json: {

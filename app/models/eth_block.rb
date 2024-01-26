@@ -13,6 +13,7 @@ class EthBlock < ApplicationRecord
     ethscriptions
     ethscription_transfers
     ethscription_ownership_versions
+    token_states
   ].each do |association|
     has_many association,
       foreign_key: :block_number,

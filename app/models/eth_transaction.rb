@@ -84,7 +84,7 @@ class EthTransaction < ApplicationRecord
     
       begin
         initial_owner = Eth::Abi.decode(['address'], creation_event['topics'].second).first
-        content_uri = Eth::Abi.decode(['string'], creation_event['data']).first
+        content_uri = Eth::Abi.decode(['string'], creation_event['data']).first&.delete("\u0000")
       rescue Eth::Abi::DecodingError
         next
       end

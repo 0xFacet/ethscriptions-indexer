@@ -72,10 +72,8 @@ class Token < ApplicationRecord
     
     return unless all_tokens.present?
     
-    # Find all transfers within the given block number
     transfers = EthscriptionTransfer.where(block_number: block.block_number).includes(:ethscription)
 
-    # Group transfers by token
     transfers_by_token = transfers.group_by do |transfer|
       all_tokens.detect { |token| token.ethscription_is_token_item?(transfer.ethscription) }
     end
@@ -100,7 +98,7 @@ class Token < ApplicationRecord
           new_token_items << TokenItem.new(
             deploy_ethscription_transaction_hash: token.deploy_ethscription_transaction_hash,
             ethscription_transaction_hash: transfer.ethscription_transaction_hash,
-            token_item_id: token.ethscription_is_token_item?(transfer.ethscription),
+            token_item_id: token.token_id_from_ethscription(transfer.ethscription),
             block_number: transfer.block_number,
             transaction_index: transfer.transaction_index
           )
@@ -110,6 +108,10 @@ class Token < ApplicationRecord
       end
 
       balances.delete_if { |address, amount| amount == 0 }
+      
+      if balances.values.any?(&:negative?)
+        raise "Negative balance detected in block: #{block.block_number}"
+      end
       
       # Create a single state change for the block
       token.token_states.create!(
@@ -124,17 +126,22 @@ class Token < ApplicationRecord
     TokenItem.import!(new_token_items) if new_token_items.present?
   end
   
-  def ethscription_is_token_item?(ethscription)
+  def token_id_from_ethscription(ethscription)
     regex = /\Adata:,\{"p":"#{Regexp.escape(protocol)}","op":"mint","tick":"#{Regexp.escape(tick)}","id":"([1-9][0-9]{0,#{trailing_digit_count}})","amt":"#{mint_amount.to_i}"\}\z/
     
     id = ethscription.content_uri[regex, 1]
-
-    valid = id.to_i.between?(1, max_id) &&
-    (ethscription.block_number > deploy_block_number ||
-    (ethscription.block_number == deploy_block_number &&
-    ethscription.transaction_index > deploy_transaction_index))
     
-    return id.to_i if valid
+    id_valid = id.to_i.between?(1, max_id)
+    
+    creation_sequence_valid = ethscription.block_number > deploy_block_number ||
+    (ethscription.block_number == deploy_block_number &&
+    ethscription.transaction_index > deploy_transaction_index)
+    
+    (id_valid && creation_sequence_valid) ? id.to_i : nil
+  end
+  
+  def ethscription_is_token_item?(ethscription)
+    token_id_from_ethscription(ethscription).present?
   end
   
   def trailing_digit_count

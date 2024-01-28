@@ -1,4 +1,6 @@
 class TokensController < ApplicationController
+  before_action :set_token, only: [:show, :historical_state, :balance_of, :validate_token_items]
+  
   def index
     scope = filter_by_params(Token.all,
       :protocol,
@@ -16,10 +18,8 @@ class TokensController < ApplicationController
   end
   
   def show
-    token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
-    
     cache_on_block do
-      json = token.as_json(include_balances: true)
+      json = @token.as_json(include_balances: true)
       
       render json: {
         result: numbers_to_strings(json),
@@ -30,10 +30,9 @@ class TokensController < ApplicationController
   
   def historical_state
     as_of_block = params[:as_of_block].to_i
-    token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
     
     cache_on_block do
-      state = token.token_states.
+      state = @token.token_states.
         where("block_number <= ?", as_of_block).
         newest_first.limit(1).first
       
@@ -45,14 +44,7 @@ class TokensController < ApplicationController
   end
   
   def balance_of
-    token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
-    
-    if !token
-      render json: { error: "Not found" }, status: 404
-      return
-    end
-    
-    balance = token.balance_of(params[:address])
+    balance = @token.balance_of(params[:address])
     
     cache_on_block do
       render json: {
@@ -62,8 +54,6 @@ class TokensController < ApplicationController
   end
   
   def validate_token_items
-    token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
-
     tx_hashes = if request.post?
       params.require(:transaction_hashes)
     else
@@ -71,7 +61,7 @@ class TokensController < ApplicationController
     end
     
     cache_on_block do
-      valid_tx_hash_scope = token.token_items.where(
+      valid_tx_hash_scope = @token.token_items.where(
         ethscription_transaction_hash: tx_hashes
       )
       
@@ -84,7 +74,7 @@ class TokensController < ApplicationController
       res = {
         valid: valid_tx_hashes,
         invalid: invalid_tx_hashes,
-        token_items_checksum: token.token_items_checksum
+        token_items_checksum: @token.token_items_checksum
       }
       
       render json: {
@@ -92,5 +82,12 @@ class TokensController < ApplicationController
         pagination: pagination_response
       }
     end
+  end
+  
+  private
+
+  def set_token
+    @token = Token.find_by_protocol_and_tick(params[:protocol], params[:tick])
+    raise RequestedRecordNotFound unless @token
   end
 end

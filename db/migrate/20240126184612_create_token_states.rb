@@ -71,6 +71,11 @@ class CreateTokenStates < ActiveRecord::Migration[7.1]
       AFTER INSERT OR DELETE ON token_states
       FOR EACH ROW EXECUTE PROCEDURE update_token_balances_and_supply();
     SQL
+    
+    Token.find_each do |token|
+      token.sync_past_token_items!
+      token.save_state_checkpoint!
+    end
   end
   
   def down

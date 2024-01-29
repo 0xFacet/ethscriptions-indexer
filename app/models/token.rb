@@ -201,11 +201,7 @@ class Token < ApplicationRecord
       DO NOTHING
     SQL
 
-    Token.transaction do
-      ActiveRecord::Base.connection.execute(sql)
-
-      update!(total_supply: token_items.count * mint_amount)
-    end
+    ActiveRecord::Base.connection.execute(sql)
   end
   
   def max_id

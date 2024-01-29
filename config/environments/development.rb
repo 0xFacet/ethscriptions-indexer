@@ -38,7 +38,7 @@ Rails.application.configure do
     config.cache_store = :null_store
   end
   
-  config.logger = ActiveSupport::Logger.new(config.paths['log'].first, 1, 25 * 1_048_576)
+  config.logger = ActiveSupport::Logger.new('/dev/null')
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log

@@ -92,7 +92,7 @@ class Token < ApplicationRecord
       transfers.each do |transfer|
         balances[transfer.to_address] += token.mint_amount
         
-        if transfer.is_first_transfer?
+        if transfer.is_only_transfer?
           total_supply += token.mint_amount
           # Prepare token item for bulk import
           new_token_items << TokenItem.new(

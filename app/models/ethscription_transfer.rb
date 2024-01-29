@@ -19,7 +19,7 @@ class EthscriptionTransfer < ApplicationRecord
     
   after_create :create_ownership_version!, :notify_eth_transaction
   
-  def is_first_transfer?
+  def is_only_transfer?
     !EthscriptionTransfer.where.not(id: id).exists?(ethscription_transaction_hash: ethscription_transaction_hash)
   end
   

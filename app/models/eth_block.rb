@@ -13,6 +13,7 @@ class EthBlock < ApplicationRecord
     ethscriptions
     ethscription_transfers
     ethscription_ownership_versions
+    token_states
   ].each do |association|
     has_many association,
       foreign_key: :block_number,
@@ -186,6 +187,8 @@ class EthBlock < ApplicationRecord
       end
       
       EthTransaction.prune_transactions(block_number)
+      
+      Token.process_block(block_record)
       
       block_record.update!(imported_at: Time.current)
       

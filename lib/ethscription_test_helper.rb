@@ -71,7 +71,7 @@ module EthscriptionTestHelper
     )
     
     tx.process!
-    
+    Token.process_block(eth_block)
     eth_block.update!(imported_at: Time.current)
     tx
   end

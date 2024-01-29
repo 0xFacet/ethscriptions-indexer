@@ -1,4 +1,8 @@
 class ApplicationController < ActionController::API
+  class RequestedRecordNotFound < StandardError; end
+  
+  rescue_from RequestedRecordNotFound, with: :record_not_found
+  
   private
   
   delegate :expand_cache_key, to: ActiveSupport::Cache
@@ -111,5 +115,9 @@ class ApplicationController < ActionController::API
     return str unless dec = big_decimal?(str)
     
     (dec.to_i == dec ? dec.to_i : dec).to_s
+  end
+  
+  def record_not_found
+    render json: { error: "Not found" }, status: 404
   end
 end

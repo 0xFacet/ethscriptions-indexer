@@ -62,7 +62,7 @@ class EthBlock < ApplicationRecord
   end
   
   def self.blocks_behind
-    cached_global_block_number - next_block_to_import
+    (cached_global_block_number - next_block_to_import) + 1
   end
   
   def self.import_batch_size

@@ -61,16 +61,24 @@ class EthBlock < ApplicationRecord
     EthBlock.where.not(imported_at: nil).order(block_number: :desc).limit(1).pluck(:blockhash).first
   end
   
+  def self.blocks_behind
+    (cached_global_block_number - next_block_to_import) + 1
+  end
+  
   def self.import_batch_size
-    ENV.fetch('BLOCK_IMPORT_BATCH_SIZE', 2).to_i
+    [blocks_behind, ENV.fetch('BLOCK_IMPORT_BATCH_SIZE', 2).to_i].min
   end
   
   def self.import_blocks_until_done
     loop do
       begin
-        EthBlock.import_blocks(
-          EthBlock.next_blocks_to_import(import_batch_size)
-        )
+        block_numbers = EthBlock.next_blocks_to_import(import_batch_size)
+        
+        if block_numbers.blank?
+          raise BlockNotReadyToImportError.new("Block not ready")
+        end
+        
+        EthBlock.import_blocks(block_numbers)
       rescue BlockNotReadyToImportError => e
         puts "#{e.message}. Stopping import."
         break

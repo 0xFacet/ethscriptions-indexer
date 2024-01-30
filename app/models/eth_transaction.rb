@@ -84,7 +84,9 @@ class EthTransaction < ApplicationRecord
     
       begin
         initial_owner = Eth::Abi.decode(['address'], creation_event['topics'].second).first
-        content_uri = Eth::Abi.decode(['string'], creation_event['data']).first
+        
+        content_uri_data = Eth::Abi.decode(['string'], creation_event['data']).first
+        content_uri = EthTransaction.clean_utf8(content_uri_data)
       rescue Eth::Abi::DecodingError
         next
       end
@@ -251,7 +253,11 @@ class EthTransaction < ApplicationRecord
 
     ary = clean_hex_string.scan(/../).map { |pair| pair.to_i(16) }
     
-    utf8_string = ary.pack('C*').force_encoding('utf-8')
+    clean_utf8(ary.pack('C*'))
+  end
+  
+  def self.clean_utf8(string)
+    utf8_string = string.force_encoding('utf-8')
     
     unless utf8_string.valid_encoding?
       utf8_string = utf8_string.encode('UTF-8', invalid: :replace, undef: :replace, replace: "\uFFFD")

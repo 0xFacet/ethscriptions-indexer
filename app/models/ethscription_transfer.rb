@@ -19,6 +19,10 @@ class EthscriptionTransfer < ApplicationRecord
     
   after_create :create_ownership_version!, :notify_eth_transaction
   
+  def is_only_transfer?
+    !EthscriptionTransfer.where.not(id: id).exists?(ethscription_transaction_hash: ethscription_transaction_hash)
+  end
+  
   def page_key
     [block_number, transaction_index, transfer_index].join("-")
   end

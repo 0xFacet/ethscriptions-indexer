@@ -20,6 +20,8 @@ class Token < ApplicationRecord
     inverse_of: :token,
     optional: true
   
+  has_many :token_states, foreign_key: :deploy_ethscription_transaction_hash, primary_key: :deploy_ethscription_transaction_hash, inverse_of: :token
+
   scope :minted_out, -> { where("total_supply = max_supply") }
   scope :not_minted_out, -> { where("total_supply < max_supply") }
   
@@ -44,19 +46,109 @@ class Token < ApplicationRecord
     
     content = OpenStruct.new(JSON.parse(deploy_tx.content))
     
-    create!(
-      deploy_ethscription_transaction_hash: deploy_tx.transaction_hash,
-      deploy_block_number: deploy_tx.block_number,
-      deploy_transaction_index: deploy_tx.transaction_index,
-      protocol: content.p,
-      tick: content.tick,
-      max_supply: content.max.to_i,
-      mint_amount: content.lim.to_i,
-      total_supply: 0
-    )
+    token = nil
+    
+    Token.transaction do
+      token = create!(
+        deploy_ethscription_transaction_hash: deploy_tx.transaction_hash,
+        deploy_block_number: deploy_tx.block_number,
+        deploy_transaction_index: deploy_tx.transaction_index,
+        protocol: content.p,
+        tick: content.tick,
+        max_supply: content.max.to_i,
+        mint_amount: content.lim.to_i,
+        total_supply: 0
+      )
+      
+      token.sync_past_token_items!
+      token.save_state_checkpoint!
+    end
+    
+    token
   end
   
-  def sync_token_items!
+  def self.process_block(block)
+    all_tokens = Token.all.to_a
+    
+    return unless all_tokens.present?
+    
+    transfers = EthscriptionTransfer.where(block_number: block.block_number).includes(:ethscription)
+
+    transfers_by_token = transfers.group_by do |transfer|
+      all_tokens.detect { |token| token.ethscription_is_token_item?(transfer.ethscription) }
+    end
+    
+    new_token_items = []
+    
+    # Process each token's transfers as a batch
+    transfers_by_token.each do |token, transfers|
+      next unless token.present?
+
+      # Start with the current state
+      total_supply = token.total_supply.to_i
+      balances = Hash.new(0).merge(token.balances.deep_dup)
+
+      # Apply all transfers to the state
+      transfers.each do |transfer|
+        balances[transfer.to_address] += token.mint_amount
+        
+        if transfer.is_only_transfer?
+          total_supply += token.mint_amount
+          # Prepare token item for bulk import
+          new_token_items << TokenItem.new(
+            deploy_ethscription_transaction_hash: token.deploy_ethscription_transaction_hash,
+            ethscription_transaction_hash: transfer.ethscription_transaction_hash,
+            token_item_id: token.token_id_from_ethscription(transfer.ethscription),
+            block_number: transfer.block_number,
+            transaction_index: transfer.transaction_index
+          )
+        else
+          balances[transfer.from_address] -= token.mint_amount
+        end
+      end
+
+      balances.delete_if { |address, amount| amount == 0 }
+      
+      if balances.values.any?(&:negative?)
+        raise "Negative balance detected in block: #{block.block_number}"
+      end
+      
+      # Create a single state change for the block
+      token.token_states.create!(
+        total_supply: total_supply,
+        balances: balances,
+        block_number: block.block_number,
+        block_timestamp: block.timestamp,
+        block_blockhash: block.blockhash,
+      )
+    end
+    
+    TokenItem.import!(new_token_items) if new_token_items.present?
+  end
+  
+  def token_id_from_ethscription(ethscription)
+    regex = /\Adata:,\{"p":"#{Regexp.escape(protocol)}","op":"mint","tick":"#{Regexp.escape(tick)}","id":"([1-9][0-9]{0,#{trailing_digit_count}})","amt":"#{mint_amount.to_i}"\}\z/
+    
+    id = ethscription.content_uri[regex, 1]
+    
+    id_valid = id.to_i.between?(1, max_id)
+    
+    creation_sequence_valid = ethscription.block_number > deploy_block_number ||
+    (ethscription.block_number == deploy_block_number &&
+    ethscription.transaction_index > deploy_transaction_index)
+    
+    (id_valid && creation_sequence_valid) ? id.to_i : nil
+  end
+  
+  def ethscription_is_token_item?(ethscription)
+    token_id_from_ethscription(ethscription).present?
+  end
+  
+  def trailing_digit_count
+    max_id.to_i.to_s.length - 1
+  end
+  
+  def sync_past_token_items!
     return if minted_out?
     
     unless tick =~ /\A[[:alnum:]\p{Emoji_Presentation}]+\z/
@@ -68,8 +160,6 @@ class Token < ApplicationRecord
       raise "Invalid protocol format: #{protocol.inspect}"
     end
     quoted_protocol = ActiveRecord::Base.connection.quote_string(protocol)
-    
-    trailing_digit_count = max_id.to_i.to_s.length - 1
 
     regex = %Q{^data:,{"p":"#{quoted_protocol}","op":"mint","tick":"#{quoted_tick}","id":"([1-9][0-9]{0,#{trailing_digit_count}})","amt":"#{mint_amount.to_i}"}$}
 
@@ -111,11 +201,7 @@ class Token < ApplicationRecord
       DO NOTHING
     SQL
 
-    Token.transaction do
-      ActiveRecord::Base.connection.execute(sql)
-    
-      update!(total_supply: token_items.count * mint_amount)
-    end
+    ActiveRecord::Base.connection.execute(sql)
   end
   
   def max_id
@@ -130,52 +216,19 @@ class Token < ApplicationRecord
     end
   end
   
-  def take_balances_snapshot
-    with_lock do
-      balance_map, latest_block_number, latest_block_hash = token_balances
-      
-      snapshot = {
-        balances: balance_map,
-        as_of_block_number: latest_block_number,
-        as_of_blockhash: latest_block_hash
-      }.with_indifferent_access
-  
-      existing_snapshot = balances_observations.find { |b| b['as_of_block_number'] == latest_block_number }
-  
-      if existing_snapshot
-        return if existing_snapshot['as_of_blockhash'] == latest_block_hash
-  
-        balances_observations.delete(existing_snapshot)
-      end
-  
-      balances_observations.unshift(snapshot)
-  
-      balances_observations.pop if balances_observations.size > 5
-  
-      update!(balances_observations: balances_observations)
-    end
+  def balance_of(address)
+    balances.fetch(address&.downcase, 0)
   end
   
-  def balances_observation(as_of_block_number = nil)
-    if as_of_block_number
-      snapshot = balances_observations.detect { |b| b['as_of_block_number'] == as_of_block_number }
-      return snapshot || {}
-    end
-  
-    balances_observations.first || {}
-  end
-  
-  def balances(as_of_block_number = nil)
-    balances_observation(as_of_block_number)['balances']
-  end
-  
-  def balance_of(address:, as_of_block_number: nil)
-    balances_observation(as_of_block_number)['balances'][address]
-  end
-  
-  def token_balances
+  def save_state_checkpoint!
     item_hashes = token_items.select(:ethscription_transaction_hash)
     
+    last_transfer = EthscriptionTransfer.
+      where(ethscription_transaction_hash: item_hashes).
+      newest_first.first
+    
+    return unless last_transfer.present?
+      
     balances = Ethscription.where(transaction_hash: item_hashes).
       select(
         :current_owner,
@@ -191,29 +244,16 @@ class Token < ApplicationRecord
 
     latest_block_number = balances.first&.latest_block_number
     latest_block_hash = balances.first&.latest_block_hash
-
-    return balance_map, latest_block_number, latest_block_hash
-  end
-  
-  def token_balances_at_block_and_tx_index(block_number, tx_index)
-    item_hashes = token_items.select(:ethscription_transaction_hash)
     
-    ownerships = EthscriptionOwnershipVersion
-      .where(
-        'block_number < ? OR (block_number = ? AND transaction_index <= ?)',
-        block_number, block_number, tx_index)
-      .where(ethscription_transaction_hash: item_hashes)
-      .newest_first
-      .to_a
-
-    latest_ownerships = ownerships
-      .group_by(&:ethscription_transaction_hash)
-      .values
-      .map(&:first)
-
-    latest_ownerships
-      .group_by(&:current_owner)
-      .transform_values { |os| os.count * mint_amount }
+    if latest_block_number > last_transfer.block_number
+      token_states.create!(
+        total_supply: balance_map.values.sum,
+        balances: balance_map,
+        block_number: latest_block_number,
+        block_blockhash: latest_block_hash,
+        block_timestamp: EthBlock.where(block_number: latest_block_number).pick(:timestamp),
+      )
+    end
   end
   
   def self.batch_import(tokens)
@@ -223,30 +263,8 @@ class Token < ApplicationRecord
       max = token.fetch('max')
       lim = token.fetch('lim')
       
-      token = create_from_token_details!(tick: tick, p: protocol, max: max, lim: lim)
-      
-      token.sync_token_items!
+      create_from_token_details!(tick: tick, p: protocol, max: max, lim: lim)
     end
-  end
-  
-  def self.batch_balance_snapshot
-    all.find_each do |token|
-      token.take_balances_snapshot_no_duplicate_jobs
-    end
-  end
-  
-  def self.batch_token_item_sync
-    not_minted_out.find_each do |token|
-      token.delay.sync_token_items!
-    end
-  end
-  
-  def take_balances_snapshot_no_duplicate_jobs
-    return if Delayed::Job.
-    where("handler LIKE ?", "%method_name: :take_balances_snapshot%").
-    where("handler ~ ?", ".*name: id\\s+value_before_type_cast: #{id}.*").exists?
-
-    delay.take_balances_snapshot
   end
   
   def self.find_deploy_transaction(tick:, p:, max:, lim:)    
@@ -256,6 +274,10 @@ class Token < ApplicationRecord
   end
   
   def as_json(options = {})
-    super(options.merge(except: [:balances_observations]))
+    super(options.merge(except: [:balances])).tap do |json|
+      if options[:include_balances]
+        json[:balances] = balances
+      end
+    end
   end
 end

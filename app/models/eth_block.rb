@@ -46,8 +46,8 @@ class EthBlock < ApplicationRecord
     blocks = if ENV.fetch('ETHEREUM_NETWORK') == "eth-mainnet"
       [1608625, 3369985, 3981254, 5873780, 8205613, 9046950,
       9046974, 9239285, 9430552, 10548855, 10711341, 15437996, 17478950]
-    elsif ENV.fetch('ETHEREUM_NETWORK') == "eth-goerli"
-      [ENV.fetch('GOERLI_START_BLOCK', 9228092).to_i]
+    else
+      [[ENV.fetch('TESTNET_START_BLOCK').to_i, 4370001].max]
     end
   
     @_genesis_blocks ||= blocks.sort.freeze

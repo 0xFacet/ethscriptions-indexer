@@ -309,7 +309,7 @@ class EthBlock < ApplicationRecord
       res = block.calculate_attestation_hash
       
       if res[:state_hash] != block.state_hash
-        raise "Mismatched state hash for block #{block.block_number}. Expected: #{block.state_hash}, got: #{computed_hash}"
+        raise "Mismatched state hash for block #{block.block_number}. Expected: #{block.state_hash}, got: #{res[:state_hash]}"
       elsif block.block_number != genesis_blocks.first && res[:parent_state_hash] != previous_block&.state_hash
         actual = previous_block&.state_hash
         expected = parent_state_hash
@@ -322,6 +322,7 @@ class EthBlock < ApplicationRecord
       previous_block = block
     end
     puts
+    puts "Final state hash: #{previous_block.state_hash}" if previous_block
   end
   
   def set_attestation_hash
@@ -342,7 +343,16 @@ class EthBlock < ApplicationRecord
   end
 
   def self.associations_to_hash
-    reflect_on_all_associations(:has_many).sort_by(&:name)
+    desired_associations = [
+      :eth_transactions,
+      :ethscription_ownership_versions,
+      :ethscription_transfers,
+      :ethscriptions
+    ].sort
+    
+    reflect_on_all_associations(:has_many).select do |assoc|
+      desired_associations.include?(assoc.name)
+    end.sort_by(&:name)
   end
   
   def self.all_hashable_attrs

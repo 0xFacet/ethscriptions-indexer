@@ -267,23 +267,19 @@ class EthTransaction < ApplicationRecord
   end
   
   def self.esip3_enabled?(block_number)
-    ENV['ETHEREUM_NETWORK'] == "eth-goerli" ||
-    block_number >= 18130000
+    on_testnet? || block_number >= 18130000
   end
   
   def self.esip5_enabled?(block_number)
-    ENV['ETHEREUM_NETWORK'] == "eth-goerli" ||
-    block_number >= 18330000
+    on_testnet? || block_number >= 18330000
   end
   
   def self.esip2_enabled?(block_number)
-    ENV['ETHEREUM_NETWORK'] == "eth-goerli" ||
-    block_number >= 17764910
+    on_testnet? || block_number >= 17764910
   end
   
   def self.esip1_enabled?(block_number)
-    ENV['ETHEREUM_NETWORK'] == "eth-goerli" ||
-    block_number >= 17672762
+    on_testnet? || block_number >= 17672762
   end
   
   def self.contract_transfer_event_signatures(block_number)
@@ -302,5 +298,9 @@ class EthTransaction < ApplicationRecord
         transaction_hash: EthscriptionTransfer.where(block_number: block_number).select(:transaction_hash)
       )
       .delete_all
+  end
+  
+  def self.on_testnet?
+    ENV['ETHEREUM_NETWORK'] != "eth-mainnet"
   end
 end

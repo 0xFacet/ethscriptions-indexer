@@ -1,4 +1,6 @@
 class ApplicationController < ActionController::API
+  around_action :use_read_only_database_if_available
+  
   class RequestedRecordNotFound < StandardError; end
   
   rescue_from RequestedRecordNotFound, with: :record_not_found
@@ -119,5 +121,13 @@ class ApplicationController < ActionController::API
   
   def record_not_found
     render json: { error: "Not found" }, status: 404
+  end
+  
+  def use_read_only_database_if_available
+    if ENV['FOLLOWER_DATABASE_URL'].present?
+      ActiveRecord::Base.connected_to(role: :reading) { yield }
+    else
+      yield
+    end
   end
 end

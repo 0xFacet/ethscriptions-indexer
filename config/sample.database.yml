@@ -21,7 +21,7 @@ default: &default
 
 development:
   <<: *default
-  database: eths_indexer_development
+  database: ethscriptions_indexer_development
 
   # The specified database role being used to connect to PostgreSQL.
   # To create additional roles in PostgreSQL see `$ createuser --help`.
@@ -55,7 +55,7 @@ development:
 # Do not set this db to the same as development or production.
 test:
   <<: *default
-  database: eths_indexer_test
+  database: ethscriptions_indexer_test
 
 # As with config/credentials.yml, you never want to store sensitive information,
 # like your database password, in your source code. If your source code is
@@ -78,7 +78,10 @@ test:
 # for a full overview on how database connection configuration can be specified.
 #
 production:
-  <<: *default
-  database: eths_indexer_production
-  username: eths_indexer
-  password: <%= ENV["ETHS_INDEXER_DATABASE_PASSWORD"] %>
+  primary:
+    <<: *default
+    url: <%= ENV['DATABASE_URL'] %>
+  primary_replica:
+    <<: *default
+    url: <%= ENV['REPLICA_DATABASE_URL'] %>
+    replica: true

@@ -83,6 +83,6 @@ production:
     url: <%= ENV['DATABASE_URL'] %>
   primary_replica:
     <<: *default
-    url: <%= ENV['FOLLOWER_DATABASE_URL'] %>
+    url: <%= ENV['REPLICA_DATABASE_URL'] %>
     replica: true
     

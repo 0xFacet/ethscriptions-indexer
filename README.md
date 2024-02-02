@@ -52,7 +52,7 @@ RHEL: `yum install postgresql-devel`
 
 Alpine: `apk add postgresql-dev`
 
-Rename the `config/database.sample.yml` file to `config/database.yml` and edit it to match your database configuration.
+Rename the `config/sample.database.yml` file to `config/database.yml` and edit it to match your database configuration.
 
 Create the database:
 

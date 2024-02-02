@@ -78,7 +78,10 @@ test:
 # for a full overview on how database connection configuration can be specified.
 #
 production:
-  <<: *default
-  database: ethscriptions_indexer_production
-  username: ethscriptions_indexer
-  password: <%= ENV["ETHS_INDEXER_DATABASE_PASSWORD"] %>
+  primary:
+    <<: *default
+    url: <%= ENV['DATABASE_URL'] %>
+  primary_replica:
+    <<: *default
+    url: <%= ENV['REPLICA_DATABASE_URL'] %>
+    replica: true

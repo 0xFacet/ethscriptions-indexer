@@ -66,7 +66,9 @@ rails db:migrate
 
 You will also need memcache to use this. You can install it with homebrew as well. Consult ChatGPT!
 
-Set up your env vars by renaming `.sample.env` to `.env`. You will need an Alchemy API key for this to work!
+Set up your env vars by renaming `.sample.env` to `.env`, `.sample.env.development` to `.env.development`, and `.sample.env.test` to `.env.test`. These environment-specific env files just set the database you're using in each environment. You have the option of using a replica database for reads, but you can just leave this blank if you don't want to use it. There's also a `.sample.env.production` but you'll probably want to set production env vars at the system level.
+
+You will need an Alchemy API key for this to work!
 
 Run the tests to make sure everything is set up correctly:
 

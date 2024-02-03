@@ -12,15 +12,6 @@ primary_replica: &primary_replica
   url: <%= ENV['DATABASE_REPLICA_URL'] %>
   replica: true
 
-test_primary: &test_primary
-  <<: *default
-  url: <%= ENV.fetch("TEST_DATABASE_URL") %>
-
-test_primary_replica: &test_primary_replica
-  <<: *default
-  url: <%= ENV['TEST_DATABASE_REPLICA_URL'] %>
-  replica: true
-
 development:
   primary:
     <<: *primary
@@ -29,9 +20,9 @@ development:
 
 test:
   primary:
-    <<: *test_primary
+    <<: *primary
   primary_replica:
-    <<: *test_primary_replica
+    <<: *primary_replica
 
 production:
   primary:

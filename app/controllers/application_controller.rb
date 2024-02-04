@@ -1,4 +1,7 @@
 class ApplicationController < ActionController::API
+  before_action :authorize_all_requests_if_required
+  around_action :use_read_only_database_if_available
+  
   class RequestedRecordNotFound < StandardError; end
   
   rescue_from RequestedRecordNotFound, with: :record_not_found
@@ -119,5 +122,21 @@ class ApplicationController < ActionController::API
   
   def record_not_found
     render json: { error: "Not found" }, status: 404
+  end
+  
+  def authorize_all_requests_if_required
+    if ENV['REQUIRE_AUTHORIZATION'].present? && ENV['REQUIRE_AUTHORIZATION'] != 'false'
+      unless authorized?
+        render json: { error: "Unauthorized" }, status: :unauthorized
+      end
+    end
+  end
+  
+  def use_read_only_database_if_available
+    if ENV['DATABASE_REPLICA_URL'].present?
+      ActiveRecord::Base.connected_to(role: :reading) { yield }
+    else
+      yield
+    end
   end
 end

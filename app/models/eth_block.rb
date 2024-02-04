@@ -13,6 +13,7 @@ class EthBlock < ApplicationRecord
     ethscriptions
     ethscription_transfers
     ethscription_ownership_versions
+    token_states
   ].each do |association|
     has_many association,
       foreign_key: :block_number,
@@ -45,8 +46,8 @@ class EthBlock < ApplicationRecord
     blocks = if ENV.fetch('ETHEREUM_NETWORK') == "eth-mainnet"
       [1608625, 3369985, 3981254, 5873780, 8205613, 9046950,
       9046974, 9239285, 9430552, 10548855, 10711341, 15437996, 17478950]
-    elsif ENV.fetch('ETHEREUM_NETWORK') == "eth-goerli"
-      [ENV.fetch('GOERLI_START_BLOCK', 9228092).to_i]
+    else
+      [[ENV.fetch('TESTNET_START_BLOCK').to_i, 4370001].max]
     end
   
     @_genesis_blocks ||= blocks.sort.freeze
@@ -60,16 +61,24 @@ class EthBlock < ApplicationRecord
     EthBlock.where.not(imported_at: nil).order(block_number: :desc).limit(1).pluck(:blockhash).first
   end
   
+  def self.blocks_behind
+    (cached_global_block_number - next_block_to_import) + 1
+  end
+  
   def self.import_batch_size
-    ENV.fetch('BLOCK_IMPORT_BATCH_SIZE', 2).to_i
+    [blocks_behind, ENV.fetch('BLOCK_IMPORT_BATCH_SIZE', 2).to_i].min
   end
   
   def self.import_blocks_until_done
     loop do
       begin
-        EthBlock.import_blocks(
-          EthBlock.next_blocks_to_import(import_batch_size)
-        )
+        block_numbers = EthBlock.next_blocks_to_import(import_batch_size)
+        
+        if block_numbers.blank?
+          raise BlockNotReadyToImportError.new("Block not ready")
+        end
+        
+        EthBlock.import_blocks(block_numbers)
       rescue BlockNotReadyToImportError => e
         puts "#{e.message}. Stopping import."
         break
@@ -187,6 +196,8 @@ class EthBlock < ApplicationRecord
       
       EthTransaction.prune_transactions(block_number)
       
+      Token.process_block(block_record)
+      
       block_record.update!(imported_at: Time.current)
       
       puts "Block Importer: imported block #{block_number}"
@@ -204,7 +215,7 @@ class EthBlock < ApplicationRecord
   
   def self.uncached_global_block_number
     ethereum_client.get_block_number.tap do |block_number|
-      Rails.cache.write('global_block_number', block_number, expires_in: 3.seconds)
+      Rails.cache.write('global_block_number', block_number, expires_in: 1.second)
     end
   end
   

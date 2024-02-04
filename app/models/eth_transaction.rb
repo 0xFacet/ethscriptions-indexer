@@ -84,7 +84,9 @@ class EthTransaction < ApplicationRecord
     
       begin
         initial_owner = Eth::Abi.decode(['address'], creation_event['topics'].second).first
-        content_uri = Eth::Abi.decode(['string'], creation_event['data']).first
+        
+        content_uri_data = Eth::Abi.decode(['string'], creation_event['data']).first
+        content_uri = EthTransaction.clean_utf8(content_uri_data)
       rescue Eth::Abi::DecodingError
         next
       end
@@ -251,7 +253,11 @@ class EthTransaction < ApplicationRecord
 
     ary = clean_hex_string.scan(/../).map { |pair| pair.to_i(16) }
     
-    utf8_string = ary.pack('C*').force_encoding('utf-8')
+    clean_utf8(ary.pack('C*'))
+  end
+  
+  def self.clean_utf8(string)
+    utf8_string = string.force_encoding('utf-8')
     
     unless utf8_string.valid_encoding?
       utf8_string = utf8_string.encode('UTF-8', invalid: :replace, undef: :replace, replace: "\uFFFD")
@@ -261,23 +267,19 @@ class EthTransaction < ApplicationRecord
   end
   
   def self.esip3_enabled?(block_number)
-    ENV['ETHEREUM_NETWORK'] == "eth-goerli" ||
-    block_number >= 18130000
+    on_testnet? || block_number >= 18130000
   end
   
   def self.esip5_enabled?(block_number)
-    ENV['ETHEREUM_NETWORK'] == "eth-goerli" ||
-    block_number >= 18330000
+    on_testnet? || block_number >= 18330000
   end
   
   def self.esip2_enabled?(block_number)
-    ENV['ETHEREUM_NETWORK'] == "eth-goerli" ||
-    block_number >= 17764910
+    on_testnet? || block_number >= 17764910
   end
   
   def self.esip1_enabled?(block_number)
-    ENV['ETHEREUM_NETWORK'] == "eth-goerli" ||
-    block_number >= 17672762
+    on_testnet? || block_number >= 17672762
   end
   
   def self.contract_transfer_event_signatures(block_number)
@@ -296,5 +298,9 @@ class EthTransaction < ApplicationRecord
         transaction_hash: EthscriptionTransfer.where(block_number: block_number).select(:transaction_hash)
       )
       .delete_all
+  end
+  
+  def self.on_testnet?
+    ENV['ETHEREUM_NETWORK'] != "eth-mainnet"
   end
 end

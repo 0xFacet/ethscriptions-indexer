@@ -1,4 +1,11 @@
 class ApplicationController < ActionController::API
+  before_action :authorize_all_requests_if_required
+  around_action :use_read_only_database_if_available
+  
+  class RequestedRecordNotFound < StandardError; end
+  
+  rescue_from RequestedRecordNotFound, with: :record_not_found
+  
   private
   
   delegate :expand_cache_key, to: ActiveSupport::Cache
@@ -61,34 +68,27 @@ class ApplicationController < ActionController::API
     false
   end
   
-  def cache_on_block(etag: nil, max_age: 6.seconds, cache_forever_with: nil)
+  def cache_on_block(etag: nil, max_age: 6.seconds, cache_forever_with: nil, &block)
     if cache_forever_with
       current = EthBlock.cached_global_block_number
       diff = current - cache_forever_with
-      if diff > 64
-        max_age = 1.day
-      end
+      max_age = [max_age, 1.day].max if diff > 64
     end
     
-    set_cache_control_headers(
-      max_age: max_age,
-      etag: [
-        EthBlock.most_recently_imported_blockhash, etag
-      ]
-    )
+    etag_components = [EthBlock.most_recently_imported_blockhash, etag]
+    
+    set_cache_control_headers(max_age: max_age, etag: etag_components, &block)
   end
   
   def set_cache_control_headers(max_age:, etag: nil)
-    version = Rails.cache.fetch("etag-version") do
-      SecureRandom.hex(32)
-    end
-    
+    version = Rails.cache.fetch("etag-version") { rand }
     addition = ActionController::Base.perform_caching ? '' : rand
-    
     versioned_etag = expand_cache_key([etag, version, addition])
-    fresh_when(etag: versioned_etag, public: true)
+    
     expires_in(max_age, public: true)
     response.headers['Vary'] = 'Authorization'
+    
+    yield if stale?(etag: versioned_etag, public: true)
   end
   
   def numbers_to_strings(result)
@@ -118,5 +118,25 @@ class ApplicationController < ActionController::API
     return str unless dec = big_decimal?(str)
     
     (dec.to_i == dec ? dec.to_i : dec).to_s
+  end
+  
+  def record_not_found
+    render json: { error: "Not found" }, status: 404
+  end
+  
+  def authorize_all_requests_if_required
+    if ENV['REQUIRE_AUTHORIZATION'].present? && ENV['REQUIRE_AUTHORIZATION'] != 'false'
+      unless authorized?
+        render json: { error: "Unauthorized" }, status: :unauthorized
+      end
+    end
+  end
+  
+  def use_read_only_database_if_available
+    if ENV['DATABASE_REPLICA_URL'].present?
+      ActiveRecord::Base.connected_to(role: :reading) { yield }
+    else
+      yield
+    end
   end
 end

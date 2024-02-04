@@ -32,21 +32,35 @@ class EthscriptionsController < ApplicationController
       scope = scope.where(transaction_hash: sub_query)
     end
     
-    results, pagination_response = paginate(
-      scope,
-      results_limit: include_latest_transfer ? 50 : 100
-    )
+    transaction_hash_only = params[:transaction_hash_only].present? && !include_latest_transfer
     
-    cache_on_block
-    
-    results = results.map do |ethscription|
-      ethscription.as_json(include_latest_transfer: include_latest_transfer)
+    if transaction_hash_only
+      scope = scope.select(:id, :transaction_hash)
     end
     
-    render json: {
-      result: numbers_to_strings(results),
-      pagination: pagination_response
-    }
+    results_limit = if transaction_hash_only
+      1000
+    elsif include_latest_transfer
+      50
+    else
+      100
+    end
+    
+    cache_on_block do
+      results, pagination_response = paginate(
+        scope,
+        results_limit: results_limit
+      )
+      
+      results = results.map do |ethscription|
+        ethscription.as_json(include_latest_transfer: include_latest_transfer)
+      end
+      
+      render json: {
+        result: numbers_to_strings(results),
+        pagination: pagination_response
+      }
+    end
   end
   
   def show
@@ -67,11 +81,11 @@ class EthscriptionsController < ApplicationController
       return
     end
     
-    cache_on_block
-    
-    render json: {
-      result: numbers_to_strings(ethscription.as_json(include_transfers: true))
-    }
+    cache_on_block do
+      render json: {
+        result: numbers_to_strings(ethscription.as_json(include_transfers: true))
+      }
+    end
   end
   
   def data
@@ -85,14 +99,12 @@ class EthscriptionsController < ApplicationController
     
     item = scope.first
     
-    cache_on_block(
-      cache_forever_with: item&.block_number
-    )
-    
     if item
-      uri_obj = item.parsed_data_uri
+      cache_on_block(cache_forever_with: item.block_number) do
+        uri_obj = item.parsed_data_uri
       
-      send_data(uri_obj.decoded_data, type: uri_obj.mimetype, disposition: 'inline')
+        send_data(uri_obj.decoded_data, type: uri_obj.mimetype, disposition: 'inline')
+      end
     else
       head 404
     end
@@ -212,11 +224,11 @@ class EthscriptionsController < ApplicationController
     
     total_ethscriptions_in_future_blocks = scope.where('block_number > ?', block_range.last).count
     
-    cache_on_block
-  
-    render json: {
-      total_future_ethscriptions: total_ethscriptions_in_future_blocks,
-      blocks: block_data
-    }
+    cache_on_block do
+      render json: {
+        total_future_ethscriptions: total_ethscriptions_in_future_blocks,
+        blocks: block_data
+      }
+    end
   end
 end

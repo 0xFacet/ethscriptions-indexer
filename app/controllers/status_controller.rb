@@ -4,8 +4,8 @@ class StatusController < ApplicationController
     last_imported_block = EthBlock.most_recently_imported_block_number.to_i
     
     blocks_behind = current_block_number - last_imported_block
-    
-    cache_on_block
+  
+    expires_in(5.seconds, public: true)
     
     resp = {
       current_block_number: current_block_number,

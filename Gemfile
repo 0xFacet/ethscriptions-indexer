@@ -73,6 +73,4 @@ gem "redis", "~> 5.0"
 
 gem "httparty", "~> 0.21.0"
 
-gem "delayed_job_active_record", "~> 4.1"
-
 gem "order_query", "~> 0.5.3"

@@ -74,3 +74,5 @@ gem "redis", "~> 5.0"
 gem "httparty", "~> 0.21.0"
 
 gem "order_query", "~> 0.5.3"
+
+gem 'facet_rails_common', git: 'https://github.com/0xfacet/facet_rails_common.git'

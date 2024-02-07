@@ -108,8 +108,8 @@ class EthBlock < ApplicationRecord
       end
     end
     
-    block_by_number_responses = block_by_number_promises.map(&:value).sort_by(&:first)
-    receipts_responses = receipts_promises.map(&:value).sort_by(&:first)
+    block_by_number_responses = block_by_number_promises.map(&:value!).sort_by(&:first)
+    receipts_responses = receipts_promises.map(&:value!).sort_by(&:first)
     
     res = []
     

@@ -38,7 +38,7 @@ class UniversalClient
     )
   end
 
-  def get_transaction_receipts(block_number)
+  def get_transaction_receipts(block_number, blocks_behind: nil)
     receipts = query_api(
       method: 'eth_getBlockReceipts',
       params: ["0x" + block_number.to_s(16)]

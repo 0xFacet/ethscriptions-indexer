@@ -95,6 +95,7 @@ class EthBlock < ApplicationRecord
   def self.import_blocks(block_numbers)
     logger.info "Block Importer: importing blocks #{block_numbers.join(', ')}"
     start = Time.current
+    _blocks_behind = blocks_behind
     
     block_by_number_promises = block_numbers.map do |block_number|
       Concurrent::Promise.execute do
@@ -104,7 +105,13 @@ class EthBlock < ApplicationRecord
     
     receipts_promises = block_numbers.map do |block_number|
       Concurrent::Promise.execute do
-        [block_number, ethereum_client.get_transaction_receipts(block_number)]
+        [
+          block_number,
+          ethereum_client.get_transaction_receipts(
+            block_number,
+            blocks_behind: _blocks_behind
+          )
+        ]
       end
     end
     

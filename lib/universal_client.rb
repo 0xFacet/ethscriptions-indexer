@@ -20,9 +20,7 @@ class UniversalClient
       method: method,
       params: params
     }
-
     url = [base_url, api_key].join('/')
-    
     HTTParty.post(url, body: data.to_json, headers: headers).parsed_response
   end
 
@@ -33,15 +31,6 @@ class UniversalClient
     )
   end
 
-  def get_transactions(block_number)
-    block_info = query_api(
-      method: 'eth_getBlockByNumber',
-      params: ['0x' + block_number.to_s(16), false]
-    )
-    
-    block_info['result']['transactions']
-  end
-
   def get_transaction_receipt(transaction_hash)
     query_api(
       method: 'eth_getTransactionReceipt',
@@ -50,11 +39,10 @@ class UniversalClient
   end
 
   def get_transaction_receipts(block_number)
-    transactions = get_transactions(block_number)
-    
-    receipts = transactions.map do |transaction|
-      get_transaction_receipt(transaction)['result']
-    end
+    receipts = query_api(
+      method: 'eth_getBlockReceipts',
+      params: ["0x" + block_number.to_s(16)]
+    )['result']
 
     {
       'id' => 1,

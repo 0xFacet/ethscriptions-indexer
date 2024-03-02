@@ -4,7 +4,7 @@ module HexDataProcessor
     binary_data = hex_string_to_binary(clean_hex_string)
     
     if support_gzip && gzip_compressed?(binary_data)
-      decompressed_data = decompress_with_ratio_limit(binary_data, 5)
+      decompressed_data = decompress_with_ratio_limit(binary_data, 10)
     else
       decompressed_data = binary_data
     end

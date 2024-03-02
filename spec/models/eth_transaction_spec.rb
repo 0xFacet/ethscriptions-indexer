@@ -7,6 +7,7 @@ RSpec.describe EthTransaction, type: :model do
     allow(EthTransaction).to receive(:esip5_enabled?).and_return(true)
     allow(EthTransaction).to receive(:esip2_enabled?).and_return(true)
     allow(EthTransaction).to receive(:esip1_enabled?).and_return(true)
+    allow(EthTransaction).to receive(:esip7_enabled?).and_return(true)
   end
   
   describe '#create_ethscription_if_needed!' do

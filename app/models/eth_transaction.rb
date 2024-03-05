@@ -38,7 +38,10 @@ class EthTransaction < ApplicationRecord
   end
   
   def utf8_input
-    EthTransaction.hex_to_utf8(input)
+    HexDataProcessor.hex_to_utf8(
+      input,
+      support_gzip: EthTransaction.esip7_enabled?(block_number)
+    )
   end
   
   def ethscription_attrs
@@ -86,7 +89,7 @@ class EthTransaction < ApplicationRecord
         initial_owner = Eth::Abi.decode(['address'], creation_event['topics'].second).first
         
         content_uri_data = Eth::Abi.decode(['string'], creation_event['data']).first
-        content_uri = EthTransaction.clean_utf8(content_uri_data)
+        content_uri = HexDataProcessor.clean_utf8(content_uri_data)
       rescue Eth::Abi::DecodingError
         next
       end
@@ -248,24 +251,6 @@ class EthTransaction < ApplicationRecord
     input.gsub(/\A0x/, '')
   end
   
-  def self.hex_to_utf8(hex_string)
-    clean_hex_string = hex_string.gsub(/\A0x/, '')
-
-    ary = clean_hex_string.scan(/../).map { |pair| pair.to_i(16) }
-    
-    clean_utf8(ary.pack('C*'))
-  end
-  
-  def self.clean_utf8(string)
-    utf8_string = string.force_encoding('utf-8')
-    
-    unless utf8_string.valid_encoding?
-      utf8_string = utf8_string.encode('UTF-8', invalid: :replace, undef: :replace, replace: "\uFFFD")
-    end
-    
-    utf8_string.delete("\u0000")
-  end
-  
   def self.esip3_enabled?(block_number)
     on_testnet? || block_number >= 18130000
   end
@@ -280,6 +265,10 @@ class EthTransaction < ApplicationRecord
   
   def self.esip1_enabled?(block_number)
     on_testnet? || block_number >= 17672762
+  end
+  
+  def self.esip7_enabled?(block_number)
+    on_testnet? || block_number >= 19376500
   end
   
   def self.contract_transfer_event_signatures(block_number)

@@ -7,6 +7,7 @@ RSpec.describe EthTransaction, type: :model do
     allow(EthTransaction).to receive(:esip5_enabled?).and_return(true)
     allow(EthTransaction).to receive(:esip2_enabled?).and_return(true)
     allow(EthTransaction).to receive(:esip1_enabled?).and_return(true)
+    allow(EthTransaction).to receive(:esip7_enabled?).and_return(true)
   end
   
   describe '#create_ethscription_if_needed!' do
@@ -349,6 +350,60 @@ RSpec.describe EthTransaction, type: :model do
         created = Ethscription.first
         expect(created.content).to eq("test-log-2")
       end
+    end
+    
+    context 'when input is valid and GZIP-compressed' do
+      it 'creates ethscription from GZIP-compressed input when valid' do
+        # Generate a GZIP-compressed version of the string "data:,test-gzip"
+        compressed_data = Zlib.gzip("data:,test-gzip")
+        hex_compressed_data = compressed_data.unpack1('H*')
+        
+        EthscriptionTestHelper.create_eth_transaction(
+          input: "0x#{hex_compressed_data}",
+          from: "0xC2172a6315c1D7f6855768F843c420EbB36eDa97",
+          to: "0xC2172a6315c1D7f6855768F843c420EbB36eDa97",
+          logs: []
+        )
+    
+        expect(Ethscription.count).to eq(1)
+        created = Ethscription.first
+        expect(created.content).to eq("test-gzip")
+      end
+    end
+  end
+  
+  context 'when input is GZIP-compressed but invalid or exceeds decompression ratio' do
+    it 'does not create ethscription with invalid or too large GZIP-compressed data' do
+      # Example of invalid GZIP-compressed data (you may need to tailor this)
+      invalid_compressed_data = "invalidgzipdata"
+      hex_invalid_compressed_data = invalid_compressed_data.unpack1('H*')
+      
+      EthscriptionTestHelper.create_eth_transaction(
+        input: "0x#{hex_invalid_compressed_data}",
+        from: "0xC2172a6315c1D7f6855768F843c420EbB36eDa97",
+        to: "0xC2172a6315c1D7f6855768F843c420EbB36eDa97",
+        logs: []
+      )
+  
+      expect(Ethscription.count).to eq(0)
+    end
+  end
+  
+  context 'when input is GZIP-compressed with a high decompression ratio' do
+    it 'does not create ethscription if decompressed data exceeds ratio limit' do
+      # Create a large string that, when compressed, significantly reduces in size
+      large_string = "A" * 100_000 # Adjust size as needed to exceed the ratio limit upon decompression
+      compressed_large_string = Zlib::Deflate.deflate(large_string)
+      hex_compressed_large_string = compressed_large_string.unpack1('H*')
+  
+      EthscriptionTestHelper.create_eth_transaction(
+        input: "0x#{hex_compressed_large_string}",
+        from: "0xC2172a6315c1D7f6855768F843c420EbB36eDa97",
+        to: "0xC2172a6315c1D7f6855768F843c420EbB36eDa97",
+        logs: []
+      )
+  
+      expect(Ethscription.count).to eq(0)
     end
   end
 end

@@ -268,7 +268,7 @@ class EthTransaction < ApplicationRecord
   end
   
   def self.esip7_enabled?(block_number)
-    on_testnet? # TODO: add start block
+    on_testnet? || block_number >= 19376500
   end
   
   def self.contract_transfer_event_signatures(block_number)

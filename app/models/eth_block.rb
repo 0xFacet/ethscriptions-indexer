@@ -41,6 +41,17 @@ class EthBlock < ApplicationRecord
       )
     end
   end
+  
+  def self.beacon_client
+    @_beacon_client ||= begin
+      client_class = ENV.fetch('BEACON_CLIENT_CLASS', 'QuickNodeClient').constantize
+      
+      client_class.new(
+        api_key: ENV['ETHEREUM_BEACON_NODE_API_KEY'],
+        base_url: ENV.fetch('ETHEREUM_BEACON_NODE_API_BASE_URL')
+      )
+    end
+  end
     
   def self.genesis_blocks
     blocks = if ENV.fetch('ETHEREUM_NETWORK') == "eth-mainnet"
@@ -157,6 +168,7 @@ class EthBlock < ApplicationRecord
         block_number: block_number,
         blockhash: result['hash'],
         parent_blockhash: result['parentHash'],
+        parent_beacon_block_root: result['parentBeaconBlockRoot'],
         timestamp: result['timestamp'].to_i(16),
         is_genesis_block: genesis_blocks.include?(block_number)
       )
@@ -186,6 +198,7 @@ class EthBlock < ApplicationRecord
           gas_used: gas_used,
           transaction_fee: transaction_fee,
           value: tx['value'].to_i(16).to_d,
+          blob_versioned_hashes: tx['blobVersionedHashes'].presence || []
         )
       end
       
@@ -205,6 +218,8 @@ class EthBlock < ApplicationRecord
       
       Token.process_block(block_record)
       
+      block_record.create_attachments_for_previous_block
+      
       block_record.update!(imported_at: Time.current)
       
       puts "Block Importer: imported block #{block_number}"
@@ -218,6 +233,39 @@ class EthBlock < ApplicationRecord
     else
       raise
     end
+  end
+  
+  def ensure_blob_sidecars(beacon_block_root = nil)
+    if blob_sidecars.present? && blob_sidecars.first['blob'].present?
+      return blob_sidecars
+    end
+    
+    beacon_block_root ||= EthBlock.where(block_number: block_number + 1).pick(:parent_beacon_block_root)
+    
+    raise "Need beacon root" unless beacon_block_root.present?
+    
+    self.blob_sidecars = EthBlock.beacon_client.get_blob_sidecars(beacon_block_root)
+  end
+  
+  def create_attachments_for_previous_block
+    scope = EthTransaction.with_blobs.joins(:ethscription).where(block_number: block_number - 1)
+    
+    return unless scope.exists?
+    
+    prev_block = EthBlock.find_by(block_number: block_number - 1)
+    
+    prev_block.ensure_blob_sidecars(parent_beacon_block_root)
+    
+    scope.find_each do |tx|
+      tx.block_blob_sidecars = prev_block.blob_sidecars
+      tx.create_ethscription_attachment_if_needed!
+    end
+    
+    prev_block.blob_sidecars = prev_block.blob_sidecars.map do |sidecar|
+      sidecar.except('blob')
+    end
+    
+    prev_block.save!
   end
   
   def self.uncached_global_block_number

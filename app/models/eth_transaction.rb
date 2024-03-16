@@ -9,10 +9,20 @@ class EthTransaction < ApplicationRecord
   has_many :ethscription_ownership_versions, foreign_key: :transaction_hash,
     primary_key: :transaction_hash, inverse_of: :eth_transaction
 
-  attr_accessor :transfer_index
+  attr_accessor :transfer_index, :block_blob_sidecars
+  def block_blob_sidecars
+    @block_blob_sidecars ||= eth_block.ensure_get_blob_sidecars
+  end
   
   scope :newest_first, -> { order(block_number: :desc, transaction_index: :desc) }
   scope :oldest_first, -> { order(block_number: :asc, transaction_index: :asc) }
+  
+  scope :with_blobs, -> { where("blob_versioned_hashes != '[]'::jsonb") }
+  scope :without_blobs, -> { where("blob_versioned_hashes = '[]'::jsonb") }
+  
+  def has_blob?
+    blob_versioned_hashes.present?
+  end
   
   def self.event_signature(event_name)
     "0x" + Digest::Keccak256.hexdigest(event_name)
@@ -65,6 +75,70 @@ class EthTransaction < ApplicationRecord
     create_ethscription_from_events!
     create_ethscription_transfers_from_input!
     create_ethscription_transfers_from_events!
+  end
+  
+  def blobs
+    return [] unless has_blob?
+    
+    block_blob_sidecars.select do |blob|
+      kzg_commitment = blob["kzg_commitment"].sub(/\A0x/, '')
+      binary_kzg_commitment = [kzg_commitment].pack("H*")
+      sha256_hash = Digest::SHA256.hexdigest(binary_kzg_commitment)
+      modified_hash = "0x01" + sha256_hash[2..-1]
+      
+      blob_versioned_hashes.include?(modified_hash)
+    end
+  end
+  
+  def compute_attachment_uri
+    return if blobs.blank?
+    
+    concatenated_hex = blobs.map do |blob|
+      hex_blob = blob["blob"].sub(/\A0x/, '')
+      
+      sections = hex_blob.scan(/.{64}/m)
+      
+      last_non_empty_section_index = sections.rindex { |section| section != '00' * 32 }
+      non_empty_sections = sections.take(last_non_empty_section_index + 1)
+      
+      last_non_empty_section = non_empty_sections.last
+      
+      if last_non_empty_section == "0080" + "00" * 30
+        non_empty_sections.pop
+      else
+        last_non_empty_section.gsub!(/80(00)+\z/, '')
+      end
+      
+      non_empty_sections.map do |section|
+        unless section.start_with?('00')
+          raise "Expected the first byte to be zero"
+        end
+        
+        section.delete_prefix("00")
+      end
+      
+      non_empty_sections.join
+    end.join
+    
+    HexDataProcessor.hex_to_utf8(concatenated_hex, support_gzip: true)
+  end
+  
+  def create_ethscription_attachment_if_needed!
+    return unless EthTransaction.esip8_enabled?(block_number)
+    return unless ethscription.present?
+    return unless ethscription.attachment_uri.blank?
+    return unless has_blob?
+
+    attachment_uri = compute_attachment_uri
+    
+    return unless DataUri.valid?(attachment_uri)
+
+    attachment_sha = "0x" + Digest::SHA256.hexdigest(attachment_uri)
+    
+    ethscription.update!(
+      attachment_uri: attachment_uri,
+      attachment_sha: attachment_sha
+    )
   end
 
   def create_ethscription_from_input!
@@ -269,6 +343,10 @@ class EthTransaction < ApplicationRecord
   
   def self.esip7_enabled?(block_number)
     on_testnet? || block_number >= 19376500
+  end
+  
+  def self.esip8_enabled?(block_number)
+    Rails.env.development? || on_testnet? # || block_number >= ???
   end
   
   def self.contract_transfer_event_signatures(block_number)

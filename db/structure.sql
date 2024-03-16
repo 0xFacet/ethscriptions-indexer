@@ -17,17 +17,10 @@ CREATE SCHEMA heroku_ext;
 
 
 --
--- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON SCHEMA public IS '';
-
-
---
 -- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
 --
 
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA heroku_ext;
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
 
 
 --
@@ -268,10 +261,13 @@ CREATE TABLE public.eth_blocks (
     is_genesis_block boolean NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    parent_beacon_block_root character varying,
+    blob_sidecars jsonb DEFAULT '[]'::jsonb NOT NULL,
     CONSTRAINT chk_rails_1c105acdac CHECK (((parent_blockhash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_319237323b CHECK (((state_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_7126b7c9d3 CHECK (((parent_state_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
-    CONSTRAINT chk_rails_7e9881ece2 CHECK (((blockhash)::text ~ '^0x[a-f0-9]{64}$'::text))
+    CONSTRAINT chk_rails_7e9881ece2 CHECK (((blockhash)::text ~ '^0x[a-f0-9]{64}$'::text)),
+    CONSTRAINT chk_rails_a5a0dc024d CHECK (((parent_beacon_block_root)::text ~ '^0x[a-f0-9]{64}$'::text))
 );
 
 
@@ -317,6 +313,7 @@ CREATE TABLE public.eth_transactions (
     value numeric NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    blob_versioned_hashes jsonb DEFAULT '[]'::jsonb NOT NULL,
     CONSTRAINT chk_rails_37ed5d6017 CHECK (((to_address)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_4250f2c315 CHECK (((block_blockhash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_9cdbd3b1ad CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
@@ -465,11 +462,15 @@ CREATE TABLE public.ethscriptions (
     value numeric NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
+    attachment_uri text,
+    attachment_sha character varying,
     CONSTRAINT chk_rails_52497428f2 CHECK (((previous_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_528fcbfbaa CHECK (((content_sha)::text ~ '^0x[a-f0-9]{64}$'::text)),
+    CONSTRAINT chk_rails_63bf027828 CHECK (((attachment_uri IS NULL) OR (attachment_sha IS NOT NULL))),
     CONSTRAINT chk_rails_6f8922831e CHECK (((current_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_788fa87594 CHECK (((block_blockhash)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_84591e2730 CHECK (((transaction_hash)::text ~ '^0x[a-f0-9]{64}$'::text)),
+    CONSTRAINT chk_rails_b55f563e4a CHECK (((attachment_sha)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_b577b97822 CHECK (((creator)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_df21fdbe02 CHECK (((initial_owner)::text ~ '^0x[a-f0-9]{40}$'::text))
 );
@@ -1120,6 +1121,13 @@ CREATE INDEX index_ethscription_transfers_on_updated_at ON public.ethscription_t
 
 
 --
+-- Name: index_ethscriptions_on_attachment_sha; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscriptions_on_attachment_sha ON public.ethscriptions USING btree (attachment_sha);
+
+
+--
 -- Name: index_ethscriptions_on_block_blockhash; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1462,6 +1470,7 @@ ALTER TABLE ONLY public.token_items
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20240315184639'),
 ('20240126184612'),
 ('20240126162132'),
 ('20240115192312'),

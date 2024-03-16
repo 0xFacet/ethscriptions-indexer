@@ -82,8 +82,13 @@ class EthscriptionsController < ApplicationController
     end
     
     cache_on_block do
+      json = numbers_to_strings(ethscription.as_json(
+        include_transfers: true,
+        include_attachment: true
+      ))
+      
       render json: {
-        result: numbers_to_strings(ethscription.as_json(include_transfers: true))
+        result: json
       }
     end
   end

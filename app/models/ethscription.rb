@@ -126,6 +126,10 @@ class Ethscription < ApplicationRecord
       if options[:include_latest_transfer]
         json[:latest_transfer] = latest_transfer.as_json
       end
+      
+      unless options[:include_attachment]
+        json.delete('attachment_uri')
+      end
     end
   end
   

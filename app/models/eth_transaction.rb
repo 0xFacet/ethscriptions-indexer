@@ -11,7 +11,7 @@ class EthTransaction < ApplicationRecord
 
   attr_accessor :transfer_index, :block_blob_sidecars
   def block_blob_sidecars
-    @block_blob_sidecars ||= eth_block.ensure_get_blob_sidecars
+    @block_blob_sidecars ||= eth_block.ensure_blob_sidecars
   end
   
   scope :newest_first, -> { order(block_number: :desc, transaction_index: :desc) }
@@ -77,16 +77,20 @@ class EthTransaction < ApplicationRecord
     create_ethscription_transfers_from_events!
   end
   
-  def blobs
-    return [] unless has_blob?
-    
-    block_blob_sidecars.select do |blob|
+  def blob_from_version_hash(version_hash)
+    block_blob_sidecars.find do |blob|
       kzg_commitment = blob["kzg_commitment"].sub(/\A0x/, '')
       binary_kzg_commitment = [kzg_commitment].pack("H*")
       sha256_hash = Digest::SHA256.hexdigest(binary_kzg_commitment)
       modified_hash = "0x01" + sha256_hash[2..-1]
       
-      blob_versioned_hashes.include?(modified_hash)
+      version_hash == modified_hash
+    end
+  end
+
+  def blobs
+    blob_versioned_hashes.map do |version_hash|
+      blob_from_version_hash(version_hash)
     end
   end
   

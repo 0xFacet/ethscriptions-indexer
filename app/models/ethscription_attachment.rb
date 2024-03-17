@@ -17,7 +17,7 @@ class EthscriptionAttachment < ApplicationRecord
     sha_input = mimetype + content
     sha = "0x" + Digest::SHA256.hexdigest(sha_input)
     
-    compression = decoded_data['compression'] || ('gzip' if gzip_compressed?(content))
+    compression = decoded_data['compression'] || ('gzip' if HexDataProcessor.gzip_compressed?(content))
     
     new(
       content: content,

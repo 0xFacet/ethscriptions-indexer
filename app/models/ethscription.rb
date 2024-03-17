@@ -132,7 +132,7 @@ class Ethscription < ApplicationRecord
       end
       
       if json['attachment_sha']
-        json['attachment_url'] = Rails.application.routes.url_helpers.attachment_ethscription_path(id: transaction_hash)
+        json['attachment_path'] = Rails.application.routes.url_helpers.attachment_ethscription_path(id: transaction_hash)
       end
     end
   end

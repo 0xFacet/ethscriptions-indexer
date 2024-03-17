@@ -26,7 +26,11 @@ class Ethscription < ApplicationRecord
     primary_key: :transaction_hash,
     inverse_of: :deploy_ethscription
     
-  
+  has_one :attachment,
+    class_name: 'EthscriptionAttachment',
+    foreign_key: :sha,
+    primary_key: :attachment_content_sha
+    
   scope :with_token_tick_and_protocol, -> (token_tick, token_protocol) {
     joins(token_item: :token)
     .where(tokens: {tick: token_tick, protocol: token_protocol})
@@ -127,8 +131,8 @@ class Ethscription < ApplicationRecord
         json[:latest_transfer] = latest_transfer.as_json
       end
       
-      unless options[:include_attachment]
-        json.delete('attachment_uri')
+      if json['attachment_sha']
+        json['attachment_url'] = Rails.application.routes.url_helpers.attachment_ethscription_path(id: transaction_hash)
       end
     end
   end

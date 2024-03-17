@@ -94,54 +94,20 @@ class EthTransaction < ApplicationRecord
     end
   end
   
-  def compute_attachment_uri
-    return if blobs.blank?
-    
-    concatenated_hex = blobs.map do |blob|
-      hex_blob = blob["blob"].sub(/\A0x/, '')
-      
-      sections = hex_blob.scan(/.{64}/m)
-      
-      last_non_empty_section_index = sections.rindex { |section| section != '00' * 32 }
-      non_empty_sections = sections.take(last_non_empty_section_index + 1)
-      
-      last_non_empty_section = non_empty_sections.last
-      
-      if last_non_empty_section == "0080" + "00" * 30
-        non_empty_sections.pop
-      else
-        last_non_empty_section.gsub!(/80(00)*\z/, '')
-      end
-      
-      non_empty_sections.map do |section|
-        unless section.start_with?('00')
-          raise "Expected the first byte to be zero"
-        end
-        
-        section.delete_prefix("00")
-      end
-      
-      non_empty_sections.join
-    end.join
-    
-    HexDataProcessor.hex_to_utf8(concatenated_hex, support_gzip: true)
-  end
-  
   def create_ethscription_attachment_if_needed!
     return unless EthTransaction.esip8_enabled?(block_number)
     return unless ethscription.present?
-    return unless ethscription.attachment_uri.blank?
+    return unless ethscription.attachment_sha.blank?
     return unless has_blob?
 
-    attachment_uri = compute_attachment_uri
+    attachment = EthscriptionAttachment.from_blobs(blobs)
     
-    return unless DataUri.valid?(attachment_uri)
-
-    attachment_sha = "0x" + Digest::SHA256.hexdigest(attachment_uri)
+    return unless attachment.present?
+    
+    attachment.create_unless_exists!
     
     ethscription.update!(
-      attachment_uri: attachment_uri,
-      attachment_sha: attachment_sha
+      attachment_sha: attachment.sha
     )
   end
 

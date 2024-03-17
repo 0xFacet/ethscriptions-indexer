@@ -8,11 +8,25 @@ class AddAttachmentAndBlobColumns < ActiveRecord::Migration[7.1]
     
     add_column :eth_transactions, :blob_versioned_hashes, :jsonb, default: [], null: false
     
-    add_column :ethscriptions, :attachment_uri, :text
     add_column :ethscriptions, :attachment_sha, :string
     add_index :ethscriptions, :attachment_sha
     
     add_check_constraint :ethscriptions, "attachment_sha ~ '^0x[a-f0-9]{64}$'"
-    add_check_constraint :ethscriptions, "attachment_uri IS NULL OR attachment_sha IS NOT NULL"
+    
+    create_table :ethscription_attachments do |t|
+      t.binary :content, null: false
+      t.string :sha, null: false
+      t.string :mimetype, null: false
+      t.bigint :size, null: false
+      t.boolean :is_text, null: false
+      t.string :compression
+      
+      t.index :sha, unique: true
+      t.index :mimetype
+      
+      t.check_constraint "sha ~ '^0x[a-f0-9]{64}$'"
+      
+      t.timestamps
+    end
   end
 end

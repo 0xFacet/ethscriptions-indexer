@@ -77,8 +77,7 @@ class EthscriptionAttachment < ApplicationRecord
   end
   
   def create_unless_exists!
-    save!
-  rescue ActiveRecord::RecordNotUnique
+    save! unless self.class.exists?(sha: sha)
   end
   
   def prepared_content

@@ -380,7 +380,6 @@ CREATE TABLE public.ethscription_attachments (
     mimetype character varying NOT NULL,
     size bigint NOT NULL,
     is_text boolean NOT NULL,
-    compression character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_eb2cc2c01d CHECK (((sha)::text ~ '^0x[a-f0-9]{64}$'::text))

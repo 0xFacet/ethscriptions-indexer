@@ -98,6 +98,7 @@ GEM
       msgpack (~> 1.2)
     builder (3.2.4)
     cbor (0.5.9.8)
+    cbor-canonical (0.1.2)
     clipboard (1.3.6)
     clockwork (3.0.2)
       activesupport
@@ -311,6 +312,7 @@ DEPENDENCIES
   awesome_print (~> 1.9)
   bootsnap
   cbor (~> 0.5.9)
+  cbor-canonical (~> 0.1.2)
   clipboard
   clockwork (~> 3.0)
   dalli (~> 3.2)

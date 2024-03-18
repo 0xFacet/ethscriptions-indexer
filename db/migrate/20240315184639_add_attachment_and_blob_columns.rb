@@ -19,7 +19,6 @@ class AddAttachmentAndBlobColumns < ActiveRecord::Migration[7.1]
       t.string :mimetype, null: false
       t.bigint :size, null: false
       t.boolean :is_text, null: false
-      t.string :compression
       
       t.index :sha, unique: true
       t.index :mimetype

@@ -23,40 +23,13 @@ module HexDataProcessor
     data[0..1].bytes == [0x1F, 0x8B]
   end
 
-  def self.ungzip_if_necessary(binary_data)
+  def self.ungzip_if_necessary(binary_data, ratio_limit: 10)
     if gzip_compressed?(binary_data)
-      decompressed_data = decompress_with_ratio_limit(binary_data, 10)
-      return decompressed_data if decompressed_data
+      return decompress_with_ratio_limit(binary_data, ratio_limit)
     end
 
     binary_data
   end
-  
-  # def self.brotli_decompress_with_ratio_limit(data, max_ratio)
-  #   original_size = data.bytesize
-  #   decompressed = StringIO.new
-  
-  #   # begin
-  #     # Create a StringIO object from the Brotli compressed data
-  #     compressed_io = StringIO.new(data)
-  #     ap compressed_io
-  #     # Initialize the Brotli stream reader
-  #     BRS::Stream::Reader.new(compressed_io) do |reader|
-  #       ap reader.read(16.kilobytes)
-  #       while chunk = reader.read(16.kilobytes) # Read in chunks
-  #         ap chunk
-  #         decompressed.write(chunk)
-  #         if decompressed.length > original_size * max_ratio
-  #           return nil # Exceeds compression ratio limit
-  #         end
-  #       end
-  #     end
-  # raise
-  #     decompressed.string
-  #   # rescue StandardError # Catch any errors during decompression
-  #   #   nil
-  #   # end
-  # end
 
   def self.decompress_with_ratio_limit(data, max_ratio)
     original_size = data.bytesize

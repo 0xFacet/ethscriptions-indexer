@@ -11,21 +11,29 @@ class EthscriptionAttachment < ApplicationRecord
     validate_input!(decoded_data)
     
     content = decoded_data['content']
+    decompressed_content = HexDataProcessor.ungzip_if_necessary(
+      content,
+      ratio_limit: 15
+    )
+    if decompressed_content.nil?
+      raise InvalidInputError, "Failed to decompress content"
+    end
+    
     mimetype = decoded_data['mimetype']
     is_text = content.encoding.name == 'UTF-8'
     
-    sha_input = mimetype + content
+    sha_input = {
+      mimetype: mimetype,
+      content: decompressed_content,
+    }.to_canonical_cbor
     sha = "0x" + Digest::SHA256.hexdigest(sha_input)
     
-    compression = decoded_data['compression'] || ('gzip' if HexDataProcessor.gzip_compressed?(content))
-    
     new(
-      content: content,
+      content: decompressed_content,
       is_text: is_text,
       sha: sha,
       mimetype: mimetype,
-      compression: compression,
-      size: content.bytesize,
+      size: decompressed_content.bytesize,
     )
   rescue EOFError, CBOR::MalformedFormatError => e
     raise InvalidInputError, "Failed to decode CBOR: #{e.message}"
@@ -87,10 +95,5 @@ class EthscriptionAttachment < ApplicationRecord
     if decoded_data['content'].nil? || decoded_data['mimetype'].nil?
       raise InvalidInputError, "Missing required fields: content, mimetype"
     end
-    
-    if decoded_data['compression'] && !['gzip', 'brotli'].include?(decoded_data['compression'])
-      raise InvalidInputError, "Invalid compression type: #{decoded_data['compression']}"
-    end
   end
 end
-

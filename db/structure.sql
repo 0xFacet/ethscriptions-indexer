@@ -10,27 +10,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: heroku_ext; Type: SCHEMA; Schema: -; Owner: -
---
-
-CREATE SCHEMA heroku_ext;
-
-
---
--- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
-
-
---
--- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
-
-
---
 -- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
 --
 
@@ -525,6 +504,7 @@ CREATE TABLE public.ethscriptions (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     attachment_sha character varying,
+    attachment_mimetype character varying(1000),
     CONSTRAINT chk_rails_52497428f2 CHECK (((previous_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_528fcbfbaa CHECK (((content_sha)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_6f8922831e CHECK (((current_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
@@ -1207,6 +1187,13 @@ CREATE INDEX index_ethscription_transfers_on_transaction_hash ON public.ethscrip
 --
 
 CREATE INDEX index_ethscription_transfers_on_updated_at ON public.ethscription_transfers USING btree (updated_at);
+
+
+--
+-- Name: index_ethscriptions_on_attachment_mimetype; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscriptions_on_attachment_mimetype ON public.ethscriptions USING btree (attachment_mimetype);
 
 
 --

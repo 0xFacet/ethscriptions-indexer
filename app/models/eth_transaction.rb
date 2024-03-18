@@ -107,7 +107,8 @@ class EthTransaction < ApplicationRecord
     attachment.create_unless_exists!
     
     ethscription.update!(
-      attachment_sha: attachment.sha
+      attachment_sha: attachment.sha,
+      attachment_mimetype: attachment.mimetype,
     )
   end
 

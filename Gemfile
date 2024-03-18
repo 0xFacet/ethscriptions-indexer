@@ -79,5 +79,4 @@ gem 'facet_rails_common', git: 'https://github.com/0xfacet/facet_rails_common.gi
 
 gem "cbor", "~> 0.5.9"
 
-
 gem "cbor-canonical", "~> 0.1.2"

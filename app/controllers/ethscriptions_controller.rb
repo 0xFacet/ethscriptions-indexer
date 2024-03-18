@@ -12,6 +12,10 @@ class EthscriptionsController < ApplicationController
       :block_number,
       :ethscription_number
     )
+    
+    if params[:attachments_present].present?
+      scope = scope.where.not(attachment_sha: nil)
+    end
 
     include_latest_transfer = params[:include_latest_transfer].present?
     

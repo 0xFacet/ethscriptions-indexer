@@ -74,13 +74,7 @@ class EthscriptionAttachment < ApplicationRecord
   end
   
   def prepared_content
-    decompressed_content = HexDataProcessor.ungzip_if_necessary(content)
-  
-    if is_text
-      HexDataProcessor.clean_utf8(decompressed_content)
-    else
-      decompressed_content
-    end
+    is_text ? HexDataProcessor.clean_utf8(content) : content
   end
   
   def self.ungzip_if_necessary!(binary)

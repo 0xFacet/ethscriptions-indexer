@@ -102,6 +102,8 @@ class EthTransaction < ApplicationRecord
       raise HowDidWeGetHereError, "Invalid state to create attachment"
     end
     
+    return if ethscription.event_log_index.present?
+    
     attachment = EthscriptionAttachment.from_blobs(blobs)
     
     attachment.create_unless_exists!

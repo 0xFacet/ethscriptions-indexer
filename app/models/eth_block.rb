@@ -248,6 +248,8 @@ class EthBlock < ApplicationRecord
   end
   
   def create_attachments_for_previous_block
+    return unless EthTransaction.esip8_enabled?(block_number - 1)
+    
     scope = EthTransaction.with_blobs.joins(:ethscription).where(block_number: block_number - 1)
     
     return unless scope.exists?

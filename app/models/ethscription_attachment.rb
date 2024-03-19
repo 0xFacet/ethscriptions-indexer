@@ -12,10 +12,10 @@ class EthscriptionAttachment < ApplicationRecord
     decoded_data = CBOR.decode(cbor_encoded_data)
     validate_input!(decoded_data)
     
+    is_text = decoded_data['content'].encoding.name == 'UTF-8'
+    
     content = ungzip_if_necessary!(decoded_data['content'])
     mimetype = ungzip_if_necessary!(decoded_data['mimetype'])
-    
-    is_text = content.encoding.name == 'UTF-8'
     
     sha_input = {
       mimetype: mimetype,

@@ -10,7 +10,9 @@ class EthscriptionsController < ApplicationController
       :sha,
       :transaction_hash,
       :block_number,
-      :ethscription_number
+      :ethscription_number,
+      :attachment_sha,
+      :attachment_mimetype
     )
     
     if params[:attachments_present].present?

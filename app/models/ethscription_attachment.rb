@@ -12,13 +12,15 @@ class EthscriptionAttachment < ApplicationRecord
     decoded_data = CBOR.decode(cbor_encoded_data)
     validate_input!(decoded_data)
     
-    if decoded_data['content'].respond_to?(:encoding)
-      is_text = decoded_data['content'].encoding.name == 'UTF-8'
+    raw_content = if decoded_data['content'].is_a?(CBOR::Tagged)
+      decoded_data['content'].value
     else
-      is_text = false
+      decoded_data['content']
     end
     
-    content = ungzip_if_necessary!(decoded_data['content'])
+    is_text = raw_content.encoding.name == 'UTF-8'
+
+    content = ungzip_if_necessary!(raw_content)
     mimetype = ungzip_if_necessary!(decoded_data['mimetype'])
     
     sha_input = {

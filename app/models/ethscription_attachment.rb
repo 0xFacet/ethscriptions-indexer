@@ -12,15 +12,9 @@ class EthscriptionAttachment < ApplicationRecord
     decoded_data = CBOR.decode(cbor_encoded_data)
     validate_input!(decoded_data)
     
-    raw_content = if decoded_data['content'].is_a?(CBOR::Tagged)
-      decoded_data['content'].value
-    else
-      decoded_data['content']
-    end
-    
-    is_text = raw_content.encoding.name == 'UTF-8'
+    is_text = decoded_data['content'].encoding.name == 'UTF-8'
 
-    content = ungzip_if_necessary!(raw_content)
+    content = ungzip_if_necessary!(decoded_data['content'])
     mimetype = ungzip_if_necessary!(decoded_data['mimetype'])
     
     sha_input = {
@@ -36,8 +30,12 @@ class EthscriptionAttachment < ApplicationRecord
       mimetype: mimetype,
       size: content.bytesize,
     )
-  rescue EOFError, CBOR::MalformedFormatError => e
+  rescue EOFError, *cbor_errors => e
     raise InvalidInputError, "Failed to decode CBOR: #{e.message}"
+  end
+  
+  def self.cbor_errors
+    [CBOR::MalformedFormatError, CBOR::UnpackError, CBOR::StackError, CBOR::TypeError]
   end
   
   def self.from_blobs(blobs)
@@ -94,6 +92,10 @@ class EthscriptionAttachment < ApplicationRecord
   def self.validate_input!(decoded_data)
     if decoded_data['content'].nil? || decoded_data['mimetype'].nil?
       raise InvalidInputError, "Missing required fields: content, mimetype"
+    end
+    
+    unless decoded_data['content'].is_a?(String)
+      raise InvalidInputError, "Invalid content type: #{decoded_data['content'].class}"
     end
   end
 end

@@ -7,32 +7,28 @@ class EthscriptionAttachment < ApplicationRecord
     inverse_of: :attachment
   
   def self.from_cbor(cbor_encoded_data)
-    cbor_encoded_data = HexDataProcessor.ungzip_if_necessary(cbor_encoded_data)
+    cbor_encoded_data = ungzip_if_necessary!(cbor_encoded_data)
     
     decoded_data = CBOR.decode(cbor_encoded_data)
     validate_input!(decoded_data)
     
-    content = decoded_data['content']
-    decompressed_content = HexDataProcessor.ungzip_if_necessary(content)
-    if decompressed_content.nil?
-      raise InvalidInputError, "Failed to decompress content"
-    end
+    content = ungzip_if_necessary!(decoded_data['content'])
+    mimetype = ungzip_if_necessary!(decoded_data['mimetype'])
     
-    mimetype = decoded_data['mimetype']
     is_text = content.encoding.name == 'UTF-8'
     
     sha_input = {
       mimetype: mimetype,
-      content: decompressed_content,
+      content: content,
     }.to_canonical_cbor
     sha = "0x" + Digest::SHA256.hexdigest(sha_input)
     
     new(
-      content: decompressed_content,
+      content: content,
       is_text: is_text,
       sha: sha,
       mimetype: mimetype,
-      size: decompressed_content.bytesize,
+      size: content.bytesize,
     )
   rescue EOFError, CBOR::MalformedFormatError => e
     raise InvalidInputError, "Failed to decode CBOR: #{e.message}"
@@ -84,6 +80,14 @@ class EthscriptionAttachment < ApplicationRecord
       HexDataProcessor.clean_utf8(decompressed_content)
     else
       decompressed_content
+    end
+  end
+  
+  def self.ungzip_if_necessary!(binary)
+    HexDataProcessor.ungzip_if_necessary(binary).tap do |res|
+      if res.nil?
+        raise InvalidInputError, "Failed to decompress content"
+      end
     end
   end
   

@@ -59,7 +59,7 @@ class EthscriptionAttachment < ApplicationRecord
       
       non_empty_sections = non_empty_sections.map do |section|
         unless section.start_with?('00')
-          raise "Expected the first byte to be zero"
+          raise InvalidInputError, "Expected the first byte to be zero"
         end
         
         section.delete_prefix("00")

@@ -1,5 +1,6 @@
-
 class EthTransaction < ApplicationRecord
+  class HowDidWeGetHereError < StandardError; end
+  
   belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
     inverse_of: :eth_transactions
   has_one :ethscription, foreign_key: :transaction_hash, primary_key: :transaction_hash,
@@ -96,13 +97,12 @@ class EthTransaction < ApplicationRecord
   
   def create_ethscription_attachment_if_needed!
     return unless EthTransaction.esip8_enabled?(block_number)
-    return unless ethscription.present?
-    return unless ethscription.attachment_sha.blank?
-    return unless has_blob?
-
-    attachment = EthscriptionAttachment.from_blobs(blobs)
     
-    return unless attachment.present?
+    if ethscription.blank? || ethscription.attachment_sha.present? || !has_blob?
+      raise HowDidWeGetHereError, "Invalid state to create attachment"
+    end
+    
+    attachment = EthscriptionAttachment.from_blobs(blobs)
     
     attachment.create_unless_exists!
     
@@ -110,6 +110,8 @@ class EthTransaction < ApplicationRecord
       attachment_sha: attachment.sha,
       attachment_mimetype: attachment.mimetype,
     )
+  rescue EthscriptionAttachment::InvalidInputError => e
+    puts "Invalid attachment: #{e.message}, transaction_hash: #{transaction_hash}, block_number: #{block_number}"
   end
 
   def create_ethscription_from_input!

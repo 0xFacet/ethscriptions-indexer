@@ -12,4 +12,18 @@ class QuickNodeClient
     
     HTTParty.get(url).parsed_response['data']
   end
+  
+  def get_block(block_id)
+    base_url_with_key = [base_url, api_key].join('/').chomp('/')
+    url = [base_url_with_key, "eth/v2/beacon/blocks/#{block_id}"].join('/')
+    
+    HTTParty.get(url).parsed_response['data']
+  end
+  
+  def get_genesis
+    base_url_with_key = [base_url, api_key].join('/').chomp('/')
+    url = [base_url_with_key, "eth/v1/beacon/genesis"].join('/')
+    
+    HTTParty.get(url).parsed_response['data']
+  end
 end

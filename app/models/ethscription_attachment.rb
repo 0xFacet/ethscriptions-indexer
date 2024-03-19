@@ -7,14 +7,13 @@ class EthscriptionAttachment < ApplicationRecord
     inverse_of: :attachment
   
   def self.from_cbor(cbor_encoded_data)
+    cbor_encoded_data = HexDataProcessor.ungzip_if_necessary(cbor_encoded_data)
+    
     decoded_data = CBOR.decode(cbor_encoded_data)
     validate_input!(decoded_data)
     
     content = decoded_data['content']
-    decompressed_content = HexDataProcessor.ungzip_if_necessary(
-      content,
-      ratio_limit: 15
-    )
+    decompressed_content = HexDataProcessor.ungzip_if_necessary(content)
     if decompressed_content.nil?
       raise InvalidInputError, "Failed to decompress content"
     end
@@ -37,8 +36,6 @@ class EthscriptionAttachment < ApplicationRecord
     )
   rescue EOFError, CBOR::MalformedFormatError => e
     raise InvalidInputError, "Failed to decode CBOR: #{e.message}"
-  rescue InvalidInputError => e
-    logger.error("#{e.message}")
   end
   
   def self.from_blobs(blobs)

@@ -90,6 +90,14 @@ class EthscriptionAttachment < ApplicationRecord
   end
   
   def self.validate_input!(decoded_data)
+    unless decoded_data.is_a?(Hash)
+      raise InvalidInputError, "Expected data to be a hash, got #{decoded_data.class} instead."
+    end
+    
+    unless decoded_data.keys.to_set == ['content', 'mimetype'].to_set
+      raise InvalidInputError, "Expected keys to be 'content' and 'mimetype', got #{decoded_data.keys} instead."
+    end
+    
     if decoded_data['content'].nil? || decoded_data['mimetype'].nil?
       raise InvalidInputError, "Missing required fields: content, mimetype"
     end

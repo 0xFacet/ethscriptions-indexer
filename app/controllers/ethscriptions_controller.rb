@@ -12,6 +12,10 @@ class EthscriptionsController < ApplicationController
       :block_number,
       :ethscription_number
     )
+    
+    if params[:attachments_present].present?
+      scope = scope.where.not(attachment_sha: nil)
+    end
 
     include_latest_transfer = params[:include_latest_transfer].present?
     
@@ -82,8 +86,10 @@ class EthscriptionsController < ApplicationController
     end
     
     cache_on_block do
+      json = numbers_to_strings(ethscription.as_json(include_transfers: true))
+      
       render json: {
-        result: numbers_to_strings(ethscription.as_json(include_transfers: true))
+        result: json
       }
     end
   end
@@ -107,6 +113,31 @@ class EthscriptionsController < ApplicationController
       end
     else
       head 404
+    end
+  end
+  
+  def attachment
+    scope = Ethscription.all
+    
+    id_or_hash = params[:id].to_s.downcase
+    
+    scope = id_or_hash.match?(/\A0x[0-9a-f]{64}\z/) ? 
+      scope.where(transaction_hash: id_or_hash) : 
+      scope.where(ethscription_number: id_or_hash)
+    
+    sha, blockhash = scope.pick(:attachment_sha, :block_blockhash)
+    
+    attachment_scope = EthscriptionAttachment.where(sha: sha)
+    
+    unless attachment_scope.exists?
+      head 404
+      return
+    end
+    
+    set_cache_control_headers(max_age: 1.minute, etag: [sha, blockhash]) do
+      attachment = attachment_scope.first
+      
+      send_data(attachment.prepared_content, type: attachment.mimetype, disposition: 'inline')    
     end
   end
   

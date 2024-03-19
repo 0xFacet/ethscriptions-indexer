@@ -23,6 +23,14 @@ module HexDataProcessor
     data[0..1].bytes == [0x1F, 0x8B]
   end
 
+  def self.ungzip_if_necessary(binary_data, ratio_limit: 10)
+    if gzip_compressed?(binary_data)
+      return decompress_with_ratio_limit(binary_data, ratio_limit)
+    end
+
+    binary_data
+  end
+
   def self.decompress_with_ratio_limit(data, max_ratio)
     original_size = data.bytesize
     decompressed = StringIO.new

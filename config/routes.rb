@@ -5,6 +5,10 @@ Rails.application.routes.draw do
         get "/:id/data", to: "ethscriptions#data"
         get "/newer_ethscriptions", to: "ethscriptions#newer_ethscriptions"
       end
+      
+      member do
+        get 'attachment', to: 'ethscriptions#attachment'
+      end
     end
     
     resources :ethscription_transfers, only: [:index] do

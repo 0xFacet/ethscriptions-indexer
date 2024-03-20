@@ -98,12 +98,8 @@ class EthscriptionAttachment < ApplicationRecord
       raise InvalidInputError, "Expected keys to be 'content' and 'mimetype', got #{decoded_data.keys} instead."
     end
     
-    if decoded_data['content'].nil? || decoded_data['mimetype'].nil?
-      raise InvalidInputError, "Missing required fields: content, mimetype"
-    end
-    
-    unless decoded_data['content'].is_a?(String)
-      raise InvalidInputError, "Invalid content type: #{decoded_data['content'].class}"
+    unless decoded_data.values.all?{|i| i.is_a?(String)}
+      raise InvalidInputError, "Invalid value type: #{decoded_data.values.map(&:class).join(', ')}"
     end
   end
 end

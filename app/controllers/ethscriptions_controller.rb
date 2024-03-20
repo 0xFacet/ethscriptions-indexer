@@ -12,7 +12,7 @@ class EthscriptionsController < ApplicationController
       :block_number,
       :ethscription_number,
       :attachment_sha,
-      :attachment_mimetype
+      :attachment_content_type
     )
     
     if params[:attachments_present].present?
@@ -139,7 +139,7 @@ class EthscriptionsController < ApplicationController
     set_cache_control_headers(max_age: 1.minute, etag: [sha, blockhash]) do
       attachment = attachment_scope.first
       
-      send_data(attachment.prepared_content, type: attachment.mimetype, disposition: 'inline')    
+      send_data(attachment.content, type: attachment.content_type_with_encoding, disposition: 'inline')    
     end
   end
   

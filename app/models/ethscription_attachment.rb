@@ -25,7 +25,7 @@ class EthscriptionAttachment < ApplicationRecord
     validate_input!
     
     self.content = ungzip_if_necessary!(decoded_data['content'])
-    self.content_type = ungzip_if_necessary!(decoded_data['content_type'])
+    self.content_type = ungzip_if_necessary!(decoded_data['contentType'])
     self.size = content.bytesize
     self.sha = calculate_sha
     
@@ -81,8 +81,8 @@ class EthscriptionAttachment < ApplicationRecord
       raise InvalidInputError, "Expected data to be a hash, got #{decoded_data.class} instead."
     end
     
-    unless decoded_data.keys.to_set == ['content', 'content_type'].to_set
-      raise InvalidInputError, "Expected keys to be 'content' and 'content_type', got #{decoded_data.keys} instead."
+    unless decoded_data.keys.to_set == ['content', 'contentType'].to_set
+      raise InvalidInputError, "Expected keys to be 'content' and 'contentType', got #{decoded_data.keys} instead."
     end
     
     unless decoded_data.values.all?{|i| i.is_a?(String)}

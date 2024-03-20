@@ -4,7 +4,7 @@ RSpec.describe EthscriptionAttachment do
   describe '.from_cbor' do
     context 'with valid CBOR data' do
       it 'creates a new EthscriptionAttachment with decoded data' do
-        cbor_encoded_data = CBOR.encode({ 'content' => 'test content', 'content_type' => 'text/plain' })
+        cbor_encoded_data = CBOR.encode({ 'content' => 'test content', 'contentType' => 'text/plain' })
         attachment = EthscriptionAttachment.from_cbor(cbor_encoded_data)
         expect(attachment.content).to eq('test content')
         expect(attachment.content_type).to eq('text/plain')
@@ -46,8 +46,8 @@ RSpec.describe EthscriptionAttachment do
     context 'when decoded_data is missing the content key' do
       it 'raises an InvalidInputError' do
         expect {
-          attachment.decoded_data = { 'content_type' => 'text/plain' }
-        }.to raise_error(EthscriptionAttachment::InvalidInputError, /Expected keys to be 'content' and 'content_type'/)
+          attachment.decoded_data = { 'contentType' => 'text/plain' }
+        }.to raise_error(EthscriptionAttachment::InvalidInputError, /Expected keys to be 'content' and 'contentType'/)
       end
     end
   
@@ -55,14 +55,14 @@ RSpec.describe EthscriptionAttachment do
       it 'raises an InvalidInputError' do
         expect {
           attachment.decoded_data = { 'content' => 'test content' }
-        }.to raise_error(EthscriptionAttachment::InvalidInputError, /Expected keys to be 'content' and 'content_type'/)
+        }.to raise_error(EthscriptionAttachment::InvalidInputError, /Expected keys to be 'content' and 'contentType'/)
       end
     end
     
     context 'when content is not a string' do
       it 'raises an InvalidInputError' do
         expect {
-          attachment.decoded_data = { 'content' => 123, 'content_type' => 'text/plain' }
+          attachment.decoded_data = { 'content' => 123, 'contentType' => 'text/plain' }
         }.to raise_error(EthscriptionAttachment::InvalidInputError, /Invalid value type/)
       end
     end
@@ -70,7 +70,7 @@ RSpec.describe EthscriptionAttachment do
     context 'when content_type is not a string' do
       it 'raises an InvalidInputError' do
         expect {
-          attachment.decoded_data = { 'content' => 'test content', 'content_type' => 123 }
+          attachment.decoded_data = { 'content' => 'test content', 'contentType' => 123 }
         }.to raise_error(EthscriptionAttachment::InvalidInputError, /Invalid value type/)
       end
     end

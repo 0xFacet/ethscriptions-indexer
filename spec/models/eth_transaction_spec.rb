@@ -414,7 +414,7 @@ RSpec.describe EthTransaction, type: :model do
         
         cbor = {
           content: "we are all gonna make it",
-          content_type: "text/plain"
+          contentType: "text/plain"
         }.to_cbor
         
         hardcoded_blobs = BlobUtils.to_blobs(data: cbor)
@@ -433,7 +433,7 @@ RSpec.describe EthTransaction, type: :model do
         
         cbor = {
           content: Zlib.gzip("we are all gonna make it"),
-          content_type: Zlib.gzip("text/plain")
+          contentType: Zlib.gzip("text/plain")
         }.to_cbor
         
         hardcoded_blobs = BlobUtils.to_blobs(data: Zlib.gzip(cbor))
@@ -452,7 +452,7 @@ RSpec.describe EthTransaction, type: :model do
         
         cbor = {
           content: Zlib.gzip("we are all gonna make it"),
-          content_type: Zlib.gzip("text/plain"),
+          contentType: Zlib.gzip("text/plain"),
           a: 'b'
         }.to_cbor
         

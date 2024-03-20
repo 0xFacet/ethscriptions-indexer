@@ -10,6 +10,27 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: heroku_ext; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA heroku_ext;
+
+
+--
+-- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
+
+
+--
 -- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
 --
 
@@ -355,10 +376,9 @@ ALTER SEQUENCE public.eth_transactions_id_seq OWNED BY public.eth_transactions.i
 CREATE TABLE public.ethscription_attachments (
     id bigint NOT NULL,
     content bytea NOT NULL,
+    content_type character varying NOT NULL,
     sha character varying NOT NULL,
-    mimetype character varying NOT NULL,
     size bigint NOT NULL,
-    is_text boolean NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     CONSTRAINT chk_rails_eb2cc2c01d CHECK (((sha)::text ~ '^0x[a-f0-9]{64}$'::text))
@@ -504,7 +524,7 @@ CREATE TABLE public.ethscriptions (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     attachment_sha character varying,
-    attachment_mimetype character varying(1000),
+    attachment_content_type character varying(1000),
     CONSTRAINT chk_rails_52497428f2 CHECK (((previous_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
     CONSTRAINT chk_rails_528fcbfbaa CHECK (((content_sha)::text ~ '^0x[a-f0-9]{64}$'::text)),
     CONSTRAINT chk_rails_6f8922831e CHECK (((current_owner)::text ~ '^0x[a-f0-9]{40}$'::text)),
@@ -1050,10 +1070,10 @@ CREATE INDEX index_eth_transactions_on_updated_at ON public.eth_transactions USI
 
 
 --
--- Name: index_ethscription_attachments_on_mimetype; Type: INDEX; Schema: public; Owner: -
+-- Name: index_ethscription_attachments_on_content_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_ethscription_attachments_on_mimetype ON public.ethscription_attachments USING btree (mimetype);
+CREATE INDEX index_ethscription_attachments_on_content_type ON public.ethscription_attachments USING btree (content_type);
 
 
 --
@@ -1190,10 +1210,10 @@ CREATE INDEX index_ethscription_transfers_on_updated_at ON public.ethscription_t
 
 
 --
--- Name: index_ethscriptions_on_attachment_mimetype; Type: INDEX; Schema: public; Owner: -
+-- Name: index_ethscriptions_on_attachment_content_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_ethscriptions_on_attachment_mimetype ON public.ethscriptions USING btree (attachment_mimetype);
+CREATE INDEX index_ethscriptions_on_attachment_content_type ON public.ethscriptions USING btree (attachment_content_type);
 
 
 --

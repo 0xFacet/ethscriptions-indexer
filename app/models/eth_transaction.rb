@@ -104,13 +104,13 @@ class EthTransaction < ApplicationRecord
     
     return if ethscription.event_log_index.present?
     
-    attachment = EthscriptionAttachment.from_blobs(blobs)
+    attachment = EthscriptionAttachment.from_eth_transaction(self)
     
     attachment.create_unless_exists!
     
     ethscription.update!(
       attachment_sha: attachment.sha,
-      attachment_mimetype: attachment.mimetype,
+      attachment_content_type: attachment.content_type,
     )
   rescue EthscriptionAttachment::InvalidInputError => e
     puts "Invalid attachment: #{e.message}, transaction_hash: #{transaction_hash}, block_number: #{block_number}"

@@ -393,7 +393,7 @@ RSpec.describe EthTransaction, type: :model do
     it 'does not create ethscription if decompressed data exceeds ratio limit' do
       # Create a large string that, when compressed, significantly reduces in size
       large_string = "A" * 100_000 # Adjust size as needed to exceed the ratio limit upon decompression
-      compressed_large_string = Zlib::Deflate.deflate(large_string)
+      compressed_large_string = Zlib.gzip(large_string)
       hex_compressed_large_string = compressed_large_string.unpack1('H*')
   
       EthscriptionTestHelper.create_eth_transaction(
@@ -404,6 +404,67 @@ RSpec.describe EthTransaction, type: :model do
       )
   
       expect(Ethscription.count).to eq(0)
+    end
+  end
+  
+  describe '#create_ethscription_attachment_if_needed!' do
+    context 'when the transaction meets criteria for attachment creation' do
+      it 'creates an ethscription attachment' do
+        transaction = EthTransaction.new
+        
+        cbor = {
+          content: "we are all gonna make it",
+          content_type: "text/plain"
+        }.to_cbor
+        
+        hardcoded_blobs = BlobUtils.to_blobs(data: cbor)
+        hardcoded_blobs = hardcoded_blobs.map { |blob| { 'blob' => blob } }
+        
+        allow(transaction).to receive(:blobs).and_return(hardcoded_blobs)
+        
+        attachment = EthscriptionAttachment.from_eth_transaction(transaction)
+        
+        expect(attachment.content).to eq("we are all gonna make it")
+        expect(attachment.content_type).to eq("text/plain")
+      end
+      
+      it 'creates an ethscription attachment gzip' do
+        transaction = EthTransaction.new
+        
+        cbor = {
+          content: Zlib.gzip("we are all gonna make it"),
+          content_type: Zlib.gzip("text/plain")
+        }.to_cbor
+        
+        hardcoded_blobs = BlobUtils.to_blobs(data: Zlib.gzip(cbor))
+        hardcoded_blobs = hardcoded_blobs.map { |blob| { 'blob' => blob } }
+        
+        allow(transaction).to receive(:blobs).and_return(hardcoded_blobs)
+        
+        attachment = EthscriptionAttachment.from_eth_transaction(transaction)
+        
+        expect(attachment.content).to eq("we are all gonna make it")
+        expect(attachment.content_type).to eq("text/plain")
+      end
+      
+      it 'raises an InvalidInputError for incorrect data' do
+        transaction = EthTransaction.new
+        
+        cbor = {
+          content: Zlib.gzip("we are all gonna make it"),
+          content_type: Zlib.gzip("text/plain"),
+          a: 'b'
+        }.to_cbor
+        
+        hardcoded_blobs = BlobUtils.to_blobs(data: Zlib.gzip(cbor))
+        hardcoded_blobs = hardcoded_blobs.map { |blob| { 'blob' => blob } }
+        
+        allow(transaction).to receive(:blobs).and_return(hardcoded_blobs)
+        
+        expect {
+          EthscriptionAttachment.from_eth_transaction(transaction)
+        }.to raise_error(EthscriptionAttachment::InvalidInputError)
+      end
     end
   end
 end

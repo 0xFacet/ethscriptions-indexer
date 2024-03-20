@@ -1,4 +1,6 @@
 module HexDataProcessor
+  class CompressionLimitExceededError < StandardError; end
+
   def self.hex_to_utf8(hex_string, support_gzip:)
     clean_hex_string = hex_string.gsub(/\A0x/, '')
     binary_data = hex_string_to_binary(clean_hex_string)
@@ -9,9 +11,9 @@ module HexDataProcessor
       decompressed_data = binary_data
     end
   
-    return nil unless decompressed_data
-    
     clean_utf8(decompressed_data)
+  rescue Zlib::Error, CompressionLimitExceededError => e
+    nil
   end
 
   def self.hex_string_to_binary(hex_string)
@@ -39,14 +41,12 @@ module HexDataProcessor
       while chunk = gz.read(16.kilobytes) # Read in chunks
         decompressed.write(chunk)
         if decompressed.length > original_size * max_ratio
-          return nil # Exceeds compression ratio limit
+          raise CompressionLimitExceededError, "Compression ratio exceeded #{max_ratio}"
         end
       end
     end
 
     decompressed.string
-  rescue Zlib::Error
-    nil
   end
 
   def self.clean_utf8(binary_data)

@@ -78,5 +78,3 @@ gem "order_query", "~> 0.5.3"
 gem 'facet_rails_common', git: 'https://github.com/0xfacet/facet_rails_common.git'
 
 gem "cbor", "~> 0.5.9"
-
-gem "cbor-canonical", "~> 0.1.2"

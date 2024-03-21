@@ -24,6 +24,7 @@ class AddAttachmentAndBlobColumns < ActiveRecord::Migration[7.1]
       
       t.index :sha, unique: true
       t.index :content_type
+      t.index :size
       
       t.check_constraint "sha ~ '^0x[a-f0-9]{64}$'"
       

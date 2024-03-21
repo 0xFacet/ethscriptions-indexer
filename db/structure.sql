@@ -10,27 +10,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: heroku_ext; Type: SCHEMA; Schema: -; Owner: -
---
-
-CREATE SCHEMA heroku_ext;
-
-
---
--- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
-
-
---
--- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
-
-
---
 -- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
 --
 
@@ -1081,6 +1060,13 @@ CREATE INDEX index_ethscription_attachments_on_content_type ON public.ethscripti
 --
 
 CREATE UNIQUE INDEX index_ethscription_attachments_on_sha ON public.ethscription_attachments USING btree (sha);
+
+
+--
+-- Name: index_ethscription_attachments_on_size; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscription_attachments_on_size ON public.ethscription_attachments USING btree (size);
 
 
 --

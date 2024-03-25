@@ -11,7 +11,8 @@ class AddAttachmentAndBlobColumns < ActiveRecord::Migration[7.1]
     add_column :ethscriptions, :attachment_sha, :string
     add_index :ethscriptions, :attachment_sha
     
-    add_column :ethscriptions, :attachment_content_type, :string, limit: 1000
+    add_column :ethscriptions, :attachment_content_type, :string,
+      limit: EthscriptionAttachment::MAX_CONTENT_TYPE_LENGTH
     add_index :ethscriptions, :attachment_content_type
     
     add_check_constraint :ethscriptions, "attachment_sha ~ '^0x[a-f0-9]{64}$'"

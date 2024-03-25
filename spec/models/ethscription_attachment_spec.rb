@@ -74,6 +74,17 @@ RSpec.describe EthscriptionAttachment do
         }.to raise_error(EthscriptionAttachment::InvalidInputError, /Invalid value type/)
       end
     end
+    
+    context 'when contentType is over 1000 characters' do
+      it 'stores only the first 1000 characters of contentType' do
+        long_content_type = 'text/plain' + 'a' * 995 + 'b' * 10 # Total length is 1005
+        attachment = EthscriptionAttachment.new
+        attachment.decoded_data = { 'content' => 'test content', 'contentType' => long_content_type }
+        
+        expect(attachment.content_type.length).to eq(1000)
+        expect(attachment.content_type).to end_with('a') # Ensures the last character is the 1000th 'a'
+      end
+    end
   end
   
   describe '.ungzip_if_necessary!' do

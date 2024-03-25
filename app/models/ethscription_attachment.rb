@@ -1,5 +1,6 @@
 class EthscriptionAttachment < ApplicationRecord
   class InvalidInputError < StandardError; end
+  MAX_CONTENT_TYPE_LENGTH = 1000
   
   has_many :ethscriptions,
     foreign_key: :attachment_sha,
@@ -33,7 +34,11 @@ class EthscriptionAttachment < ApplicationRecord
     validate_input!
     
     self.content = ungzip_if_necessary!(decoded_data['content'])
-    self.content_type = ungzip_if_necessary!(decoded_data['contentType'])
+    
+    self.content_type = ungzip_if_necessary!(
+      decoded_data['contentType']
+    ).first(MAX_CONTENT_TYPE_LENGTH)
+    
     self.size = content.bytesize
     self.sha = calculate_sha
     

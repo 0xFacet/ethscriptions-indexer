@@ -21,8 +21,6 @@ class EthBlock < ApplicationRecord
       inverse_of: :eth_block
   end
   
-  has_many :ethscription_attachments, through: :ethscriptions, source: :attachment
-  
   before_validation :generate_attestation_hash, if: -> { imported_at.present? }
   
   def self.find_by_page_key(...)
@@ -46,9 +44,7 @@ class EthBlock < ApplicationRecord
   
   def self.beacon_client
     @_beacon_client ||= begin
-      client_class = ENV.fetch('BEACON_CLIENT_CLASS', 'QuickNodeClient').constantize
-      
-      client_class.new(
+      EthereumBeaconNodeClient.new(
         api_key: ENV['ETHEREUM_BEACON_NODE_API_KEY'],
         base_url: ENV.fetch('ETHEREUM_BEACON_NODE_API_BASE_URL')
       )
@@ -269,6 +265,7 @@ class EthBlock < ApplicationRecord
       sidecar.except('blob')
     end
     
+    # TODO: Update state attestation hash
     prev_block.save!
   end
   

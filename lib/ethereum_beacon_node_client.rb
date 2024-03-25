@@ -1,4 +1,4 @@
-class QuickNodeClient
+class EthereumBeaconNodeClient
   attr_accessor :base_url, :api_key
 
   def initialize(base_url: ENV['ETHEREUM_BEACON_NODE_API_BASE_URL'], api_key:)

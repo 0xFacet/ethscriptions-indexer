@@ -9,6 +9,7 @@ module BlobUtils
   # Error Classes
   class BlobSizeTooLargeError < StandardError; end
   class EmptyBlobError < StandardError; end
+  class IncorrectBlobEncoding < StandardError; end
 
   # Adapted from Viem
   def self.to_blobs(data:)
@@ -75,7 +76,7 @@ module BlobUtils
       
       non_empty_sections = non_empty_sections.map do |section|
         unless section.start_with?('00')
-          raise InvalidInputError, "Expected the first byte to be zero"
+          raise IncorrectBlobEncoding, "Expected the first byte to be zero"
         end
         
         section.delete_prefix("00")

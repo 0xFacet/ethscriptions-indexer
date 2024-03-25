@@ -2,6 +2,10 @@
 
 This indexer has been extracted and streamlined from the indexer that runs Ethscriptions.com. This indexer has been validated as producing the same results against the live Ethscriptions.com indexer. However this new indexer is not being used in production yet. The plan is to put it into production to power the Facet VM shortly. Let's build it together!
 
+## Important: When pulling changes!
+
+Always run `bundle install && rails db:migrate` after you pull in the latest changes.
+
 ## Installation Instructions
 
 This is a Ruby on Rails app.

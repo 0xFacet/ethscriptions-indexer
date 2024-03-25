@@ -1,5 +1,6 @@
-
 class EthTransaction < ApplicationRecord
+  class HowDidWeGetHereError < StandardError; end
+  
   belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
     inverse_of: :eth_transactions
   has_one :ethscription, foreign_key: :transaction_hash, primary_key: :transaction_hash,
@@ -9,10 +10,20 @@ class EthTransaction < ApplicationRecord
   has_many :ethscription_ownership_versions, foreign_key: :transaction_hash,
     primary_key: :transaction_hash, inverse_of: :eth_transaction
 
-  attr_accessor :transfer_index
+  attr_accessor :transfer_index, :block_blob_sidecars
+  def block_blob_sidecars
+    @block_blob_sidecars ||= eth_block.ensure_blob_sidecars
+  end
   
   scope :newest_first, -> { order(block_number: :desc, transaction_index: :desc) }
   scope :oldest_first, -> { order(block_number: :asc, transaction_index: :asc) }
+  
+  scope :with_blobs, -> { where("blob_versioned_hashes != '[]'::jsonb") }
+  scope :without_blobs, -> { where("blob_versioned_hashes = '[]'::jsonb") }
+  
+  def has_blob?
+    blob_versioned_hashes.present?
+  end
   
   def self.event_signature(event_name)
     "0x" + Digest::Keccak256.hexdigest(event_name)
@@ -65,6 +76,44 @@ class EthTransaction < ApplicationRecord
     create_ethscription_from_events!
     create_ethscription_transfers_from_input!
     create_ethscription_transfers_from_events!
+  end
+  
+  def blob_from_version_hash(version_hash)
+    block_blob_sidecars.find do |blob|
+      kzg_commitment = blob["kzg_commitment"].sub(/\A0x/, '')
+      binary_kzg_commitment = [kzg_commitment].pack("H*")
+      sha256_hash = Digest::SHA256.hexdigest(binary_kzg_commitment)
+      modified_hash = "0x01" + sha256_hash[2..-1]
+      
+      version_hash == modified_hash
+    end
+  end
+
+  def blobs
+    blob_versioned_hashes.map do |version_hash|
+      blob_from_version_hash(version_hash)
+    end
+  end
+  
+  def create_ethscription_attachment_if_needed!
+    return unless EthTransaction.esip8_enabled?(block_number)
+    
+    if ethscription.blank? || ethscription.attachment_sha.present? || !has_blob?
+      raise HowDidWeGetHereError, "Invalid state to create attachment"
+    end
+    
+    return if ethscription.event_log_index.present?
+    
+    attachment = EthscriptionAttachment.from_eth_transaction(self)
+    
+    attachment.create_unless_exists!
+    
+    ethscription.update!(
+      attachment_sha: attachment.sha,
+      attachment_content_type: attachment.content_type,
+    )
+  rescue EthscriptionAttachment::InvalidInputError => e
+    puts "Invalid attachment: #{e.message}, transaction_hash: #{transaction_hash}, block_number: #{block_number}"
   end
 
   def create_ethscription_from_input!
@@ -269,6 +318,10 @@ class EthTransaction < ApplicationRecord
   
   def self.esip7_enabled?(block_number)
     on_testnet? || block_number >= 19376500
+  end
+  
+  def self.esip8_enabled?(block_number)
+    on_testnet? || block_number >= 19526000
   end
   
   def self.contract_transfer_event_signatures(block_number)

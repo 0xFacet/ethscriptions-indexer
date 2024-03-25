@@ -29,7 +29,8 @@ class Ethscription < ApplicationRecord
   has_one :attachment,
     class_name: 'EthscriptionAttachment',
     foreign_key: :sha,
-    primary_key: :attachment_sha
+    primary_key: :attachment_sha,
+    inverse_of: :ethscriptions
     
   scope :with_token_tick_and_protocol, -> (token_tick, token_protocol) {
     joins(token_item: :token)

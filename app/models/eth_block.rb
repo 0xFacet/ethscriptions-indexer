@@ -21,6 +21,8 @@ class EthBlock < ApplicationRecord
       inverse_of: :eth_block
   end
   
+  has_many :ethscription_attachments, through: :ethscriptions, source: :attachment
+  
   before_validation :generate_attestation_hash, if: -> { imported_at.present? }
   
   def self.find_by_page_key(...)

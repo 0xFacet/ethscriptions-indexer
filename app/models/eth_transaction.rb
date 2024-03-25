@@ -321,7 +321,7 @@ class EthTransaction < ApplicationRecord
   end
   
   def self.esip8_enabled?(block_number)
-    Rails.env.development? || on_testnet? # || block_number >= ???
+    on_testnet? || block_number >= 19526000
   end
   
   def self.contract_transfer_event_signatures(block_number)

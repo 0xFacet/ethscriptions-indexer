@@ -9,6 +9,14 @@ class EthscriptionAttachment < ApplicationRecord
   delegate :ungzip_if_necessary!, to: :class
   attr_accessor :decoded_data
   
+  def self.from_eth_transaction(tx)
+    blobs = tx.blobs.map{|i| i['blob']}
+    
+    cbor = BlobUtils.from_blobs(blobs: blobs)
+
+    from_cbor(cbor)
+  end
+  
   def self.from_cbor(cbor_encoded_data)
     cbor_encoded_data = ungzip_if_necessary!(cbor_encoded_data)
     
@@ -39,14 +47,6 @@ class EthscriptionAttachment < ApplicationRecord
     ].join
     
     "0x" + Digest::SHA256.hexdigest(combined)
-  end
-  
-  def self.from_eth_transaction(tx)
-    blobs = tx.blobs.map{|i| i['blob']}
-    
-    cbor = BlobUtils.from_blobs(blobs: blobs)
-
-    from_cbor(cbor)
   end
   
   def create_unless_exists!

@@ -1,13 +1,13 @@
 class BlocksController < ApplicationController
+  cache_actions_on_block
+  
   def index
     results, pagination_response = paginate(EthBlock.all)
     
-    cache_on_block do
-      render json: {
-        result: numbers_to_strings(results),
-        pagination: pagination_response
-      }
-    end
+    render json: {
+      result: numbers_to_strings(results),
+      pagination: pagination_response
+    }
   end
 
   def show
@@ -22,9 +22,7 @@ class BlocksController < ApplicationController
       return
     end
     
-    cache_on_block do
-      render json: block
-    end
+    render json: block
   end
   
   def newer_blocks
@@ -39,10 +37,8 @@ class BlocksController < ApplicationController
       scope.to_a
     end
     
-    cache_on_block do
-      render json: {
-        result: res
-      }
-    end
+    render json: {
+      result: res
+    }
   end
 end

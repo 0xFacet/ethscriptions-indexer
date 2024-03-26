@@ -1,12 +1,11 @@
 class EthBlock < ApplicationRecord
-  include OrderQuery
+  include FacetRailsCommon::OrderQuery
   class BlockNotReadyToImportError < StandardError; end
-  
-  order_query :newest_first,
-    [:block_number, :desc, unique: true]
-  
-  order_query :oldest_first,
-    [:block_number, :asc, unique: true]
+
+  initialize_order_query({
+    newest_first: [[:block_number, :desc, unique: true]],
+    oldest_first: [[:block_number, :asc, unique: true]]
+  }, page_key_attributes: [:block_number])
     
   %i[
     eth_transactions
@@ -22,14 +21,6 @@ class EthBlock < ApplicationRecord
   end
   
   before_validation :generate_attestation_hash, if: -> { imported_at.present? }
-  
-  def self.find_by_page_key(...)
-    find_by_block_number(...)
-  end
-  
-  def page_key
-    block_number
-  end
     
   def self.ethereum_client
     @_ethereum_client ||= begin

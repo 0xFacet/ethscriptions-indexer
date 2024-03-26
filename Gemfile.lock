@@ -1,8 +1,9 @@
 GIT
   remote: https://github.com/0xfacet/facet_rails_common.git
-  revision: 32114d24e66effe38cc93ceca2da64e9be202381
+  revision: 8690ba36719551306473d61a02bdb59a83226f20
   specs:
     facet_rails_common (0.1.0)
+      order_query (~> 0.5.3)
 
 GEM
   remote: https://rubygems.org/

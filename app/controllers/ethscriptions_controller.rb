@@ -1,4 +1,6 @@
 class EthscriptionsController < ApplicationController
+  cache_actions_on_block only: [:index, :show, :newer_ethscriptions]
+  
   def index
     scope = filter_by_params(Ethscription.all,
       :current_owner,
@@ -52,21 +54,19 @@ class EthscriptionsController < ApplicationController
       100
     end
     
-    cache_on_block do
-      results, pagination_response = paginate(
-        scope,
-        results_limit: results_limit
-      )
-      
-      results = results.map do |ethscription|
-        ethscription.as_json(include_latest_transfer: include_latest_transfer)
-      end
-      
-      render json: {
-        result: numbers_to_strings(results),
-        pagination: pagination_response
-      }
+    results, pagination_response = paginate(
+      scope,
+      results_limit: results_limit
+    )
+    
+    results = results.map do |ethscription|
+      ethscription.as_json(include_latest_transfer: include_latest_transfer)
     end
+    
+    render json: {
+      result: numbers_to_strings(results),
+      pagination: pagination_response
+    }
   end
   
   def show
@@ -87,13 +87,11 @@ class EthscriptionsController < ApplicationController
       return
     end
     
-    cache_on_block do
-      json = numbers_to_strings(ethscription.as_json(include_transfers: true))
-      
-      render json: {
-        result: json
-      }
-    end
+    json = numbers_to_strings(ethscription.as_json(include_transfers: true))
+    
+    render json: {
+      result: json
+    }
   end
   
   def data
@@ -105,16 +103,19 @@ class EthscriptionsController < ApplicationController
       scope.where(transaction_hash: id_or_hash) : 
       scope.where(ethscription_number: id_or_hash)
     
-    item = scope.first
+    blockhash = scope.pick(:block_blockhash)
     
-    if item
-      cache_on_block(cache_forever_with: item.block_number) do
-        uri_obj = item.parsed_data_uri
-      
-        send_data(uri_obj.decoded_data, type: uri_obj.mimetype, disposition: 'inline')
-      end
-    else
+    unless blockhash.present?
       head 404
+      return
+    end
+    
+    set_cache_control_headers(max_age: 6, s_max_age: 1.minute, etag: blockhash) do
+      item = scope.first
+      
+      uri_obj = item.parsed_data_uri
+      
+      send_data(uri_obj.decoded_data, type: uri_obj.mimetype, disposition: 'inline')
     end
   end
   
@@ -136,7 +137,7 @@ class EthscriptionsController < ApplicationController
       return
     end
     
-    set_cache_control_headers(max_age: 1.minute, etag: [sha, blockhash]) do
+    set_cache_control_headers(max_age: 6, s_max_age: 1.minute, etag: [sha, blockhash]) do
       attachment = attachment_scope.first
       
       send_data(attachment.content, type: attachment.content_type_with_encoding, disposition: 'inline')    
@@ -257,11 +258,9 @@ class EthscriptionsController < ApplicationController
     
     total_ethscriptions_in_future_blocks = scope.where('block_number > ?', block_range.last).count
     
-    cache_on_block do
-      render json: {
-        total_future_ethscriptions: total_ethscriptions_in_future_blocks,
-        blocks: block_data
-      }
-    end
+    render json: {
+      total_future_ethscriptions: total_ethscriptions_in_future_blocks,
+      blocks: block_data
+    }
   end
 end

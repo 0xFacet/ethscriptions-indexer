@@ -9,7 +9,7 @@ class EthscriptionsController < ApplicationController
       :mimetype,
       :media_type,
       :mime_subtype,
-      :sha,
+      :content_sha,
       :transaction_hash,
       :block_number,
       :ethscription_number,

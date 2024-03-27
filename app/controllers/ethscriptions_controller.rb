@@ -17,9 +17,8 @@ class EthscriptionsController < ApplicationController
       :attachment_content_type
     )
     
-    if params[:attachments_present].present?
-      scope = scope.where.not(attachment_sha: nil)
-    end
+    scope = scope.where.not(attachment_sha: nil) if params[:attachment_present] == "true"
+    scope = scope.where(attachment_sha: nil) if params[:attachment_present] == "false"
 
     include_latest_transfer = params[:include_latest_transfer].present?
     

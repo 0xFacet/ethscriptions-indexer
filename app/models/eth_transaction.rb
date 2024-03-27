@@ -99,7 +99,16 @@ class EthTransaction < ApplicationRecord
     return unless EthTransaction.esip8_enabled?(block_number)
     
     if ethscription.blank? || ethscription.attachment_sha.present? || !has_blob?
-      raise HowDidWeGetHereError, "Invalid state to create attachment"
+      Airbrake.notify("Invalid state to create attachment", {
+        transaction_hash: transaction_hash,
+        ethscription_transaction_hash: ethscription&.transaction_hash,
+        ethscription_attachment_sha: ethscription&.attachment_sha,
+        has_blob: has_blob?,
+      })
+      
+      return
+      
+      # raise HowDidWeGetHereError, "Invalid state to create attachment"
     end
     
     return if ethscription.event_log_index.present?

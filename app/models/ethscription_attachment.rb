@@ -16,6 +16,8 @@ class EthscriptionAttachment < ApplicationRecord
     cbor = BlobUtils.from_blobs(blobs: blobs)
 
     from_cbor(cbor)
+  rescue BlobUtils::IncorrectBlobEncoding => e
+    raise InvalidInputError, "Failed to decode CBOR: #{e.message}"
   end
   
   def self.from_cbor(cbor_encoded_data)

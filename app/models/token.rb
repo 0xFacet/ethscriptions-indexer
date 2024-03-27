@@ -1,12 +1,16 @@
 class Token < ApplicationRecord
-  include OrderQuery
-  order_query :newest_first,
-    [:deploy_block_number, :desc],
-    [:deploy_transaction_index, :desc, unique: true]
-  
-  order_query :oldest_first,
-    [:deploy_block_number, :asc],
-    [:deploy_transaction_index, :asc, unique: true]
+  include FacetRailsCommon::OrderQuery
+
+  initialize_order_query({
+    newest_first: [
+      [:deploy_block_number, :desc],
+      [:deploy_transaction_index, :desc, unique: true]
+    ],
+    oldest_first: [
+      [:deploy_block_number, :asc],
+      [:deploy_transaction_index, :asc, unique: true]
+    ]
+  }, page_key_attributes: [:deploy_ethscription_transaction_hash])
     
   has_many :token_items,
     foreign_key: :deploy_ethscription_transaction_hash,
@@ -24,14 +28,6 @@ class Token < ApplicationRecord
 
   scope :minted_out, -> { where("total_supply = max_supply") }
   scope :not_minted_out, -> { where("total_supply < max_supply") }
-  
-  def self.find_by_page_key(...)
-    find_by_deploy_ethscription_transaction_hash(...)
-  end
-  
-  def page_key
-    deploy_ethscription_transaction_hash
-  end
   
   def minted_out?
     total_supply == max_supply

@@ -1,12 +1,10 @@
 class Ethscription < ApplicationRecord
-  include OrderQuery
-  order_query :newest_first,
-    [:block_number, :desc],
-    [:transaction_index, :desc, unique: true]
-  
-  order_query :oldest_first,
-    [:block_number, :asc],
-    [:transaction_index, :asc, unique: true]
+  include FacetRailsCommon::OrderQuery
+    
+  initialize_order_query({
+    newest_first: [[:block_number, :desc], [:transaction_index, :desc, unique: true]],
+    oldest_first: [[:block_number, :asc], [:transaction_index, :asc, unique: true]]
+  }, page_key_attributes: [:transaction_hash])
   
   belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
     inverse_of: :ethscriptions
@@ -42,14 +40,6 @@ class Ethscription < ApplicationRecord
   after_create :create_initial_transfer!
   
   MAX_MIMETYPE_LENGTH = 1000
-  
-  def self.find_by_page_key(...)
-    find_by_transaction_hash(...)
-  end
-  
-  def page_key
-    transaction_hash
-  end
   
   def latest_transfer
     ethscription_transfers.sort_by do |transfer|

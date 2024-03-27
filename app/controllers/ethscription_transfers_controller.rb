@@ -1,4 +1,6 @@
 class EthscriptionTransfersController < ApplicationController
+  cache_actions_on_block
+  
   def index
     scope = filter_by_params(EthscriptionTransfer.all,
       :from_address,
@@ -25,13 +27,11 @@ class EthscriptionTransfersController < ApplicationController
       scope = scope.where(ethscription_transaction_hash: tokens)
     end
     
-    cache_on_block do
-      results, pagination_response = paginate(scope)
-      
-      render json: {
-        result: numbers_to_strings(results),
-        pagination: pagination_response
-      }
-    end
+    results, pagination_response = paginate(scope)
+    
+    render json: {
+      result: numbers_to_strings(results),
+      pagination: pagination_response
+    }
   end
 end

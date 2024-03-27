@@ -1,11 +1,11 @@
 class StatusController < ApplicationController
   def indexer_status
+    set_cache_control_headers(max_age: 6)
+    
     current_block_number = EthBlock.cached_global_block_number
     last_imported_block = EthBlock.most_recently_imported_block_number.to_i
     
     blocks_behind = current_block_number - last_imported_block
-  
-    expires_in(5.seconds, public: true)
     
     resp = {
       current_block_number: current_block_number,

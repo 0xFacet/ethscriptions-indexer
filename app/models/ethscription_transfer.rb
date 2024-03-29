@@ -1,14 +1,18 @@
 class EthscriptionTransfer < ApplicationRecord
-  include OrderQuery
-  order_query :newest_first,
-    [:block_number, :desc],
-    [:transaction_index, :desc],
-    [:transfer_index, :desc, unique: true]
-  
-  order_query :oldest_first,
-    [:block_number, :asc],
-    [:transaction_index, :asc],
-    [:transfer_index, :asc, unique: true]
+  include FacetRailsCommon::OrderQuery
+
+  initialize_order_query({
+    newest_first: [
+      [:block_number, :desc],
+      [:transaction_index, :desc],
+      [:transfer_index, :desc, unique: true]
+    ],
+    oldest_first: [
+      [:block_number, :asc],
+      [:transaction_index, :asc],
+      [:transfer_index, :asc, unique: true]
+    ]
+  }, page_key_attributes: [:block_number, :transaction_index, :transfer_index])
   
   belongs_to :eth_block, foreign_key: :block_number, primary_key: :block_number, optional: true,
     inverse_of: :ethscription_transfers
@@ -21,22 +25,6 @@ class EthscriptionTransfer < ApplicationRecord
   
   def is_only_transfer?
     !EthscriptionTransfer.where.not(id: id).exists?(ethscription_transaction_hash: ethscription_transaction_hash)
-  end
-  
-  def page_key
-    [block_number, transaction_index, transfer_index].join("-")
-  end
-  
-  def self.find_by_page_key(page_key)
-    return if page_key.blank?
-    
-    block_number, transaction_index, transfer_index = page_key.split("-")
-    
-    find_by(
-      block_number: block_number,
-      transaction_index: transaction_index,
-      transfer_index: transfer_index
-    )
   end
   
   def notify_eth_transaction

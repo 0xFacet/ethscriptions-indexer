@@ -102,14 +102,19 @@ class EthscriptionsController < ApplicationController
       scope.where(transaction_hash: id_or_hash) : 
       scope.where(ethscription_number: id_or_hash)
     
-    blockhash = scope.pick(:block_blockhash)
+    blockhash, block_number = scope.pick(:block_blockhash, :block_number)
     
     unless blockhash.present?
       head 404
       return
     end
     
-    set_cache_control_headers(max_age: 6, s_max_age: 1.minute, etag: blockhash) do
+    set_cache_control_headers(
+      max_age: 6,
+      s_max_age: 1.minute,
+      etag: blockhash,
+      extend_cache_if_block_final: block_number
+    ) do
       item = scope.first
       
       uri_obj = item.parsed_data_uri
@@ -127,7 +132,7 @@ class EthscriptionsController < ApplicationController
       scope.where(transaction_hash: id_or_hash) : 
       scope.where(ethscription_number: id_or_hash)
     
-    sha, blockhash = scope.pick(:attachment_sha, :block_blockhash)
+    sha, blockhash, block_number = scope.pick(:attachment_sha, :block_blockhash, :block_number)
     
     attachment_scope = EthscriptionAttachment.where(sha: sha)
     
@@ -136,7 +141,12 @@ class EthscriptionsController < ApplicationController
       return
     end
     
-    set_cache_control_headers(max_age: 6, s_max_age: 1.minute, etag: [sha, blockhash]) do
+    set_cache_control_headers(
+      max_age: 6,
+      s_max_age: 1.minute,
+      etag: [sha, blockhash],
+      extend_cache_if_block_final: block_number
+    ) do
       attachment = attachment_scope.first
       
       send_data(attachment.content, type: attachment.content_type_with_encoding, disposition: 'inline')    

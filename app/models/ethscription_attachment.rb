@@ -70,6 +70,8 @@ class EthscriptionAttachment < ApplicationRecord
     parts = content_type.split(';').map(&:strip)
     mime_type = parts[0]
     
+    return content_type if mime_type.blank?
+    
     has_charset = parts.any? { |part| part.downcase.start_with?('charset=') }
   
     text_or_json_types = ['text/', 'application/json', 'application/javascript']

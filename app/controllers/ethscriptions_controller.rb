@@ -5,6 +5,7 @@ class EthscriptionsController < ApplicationController
     scope = filter_by_params(Ethscription.all,
       :current_owner,
       :creator,
+      :initial_owner,
       :previous_owner,
       :mimetype,
       :media_type,
@@ -12,6 +13,8 @@ class EthscriptionsController < ApplicationController
       :content_sha,
       :transaction_hash,
       :block_number,
+      :block_timestamp,
+      :block_blockhash,
       :ethscription_number,
       :attachment_sha,
       :attachment_content_type

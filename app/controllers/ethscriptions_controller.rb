@@ -2,6 +2,10 @@ class EthscriptionsController < ApplicationController
   cache_actions_on_block only: [:index, :show, :newer_ethscriptions]
   
   def index
+    if params[:owned_by_address].present?
+      params[:current_owner] = params[:owned_by_address]
+    end
+    
     scope = filter_by_params(Ethscription.all,
       :current_owner,
       :creator,
@@ -154,6 +158,40 @@ class EthscriptionsController < ApplicationController
       
       send_data(attachment.content, type: attachment.content_type_with_encoding, disposition: 'inline')    
     end
+  end
+  
+  def exists
+    existing = Ethscription.find_by_content_sha(params[:sha])
+  
+    render json: {
+      result: {
+        exists: existing.present?,
+        ethscription: existing
+      }
+    }
+  end
+  
+  def exists_multi
+    shas = Array.wrap(params[:shas]).sort.uniq
+    
+    if shas.size > 100
+      render json: { error: "Too many SHAs" }, status: 400
+      return
+    end
+    
+    result = Rails.cache.fetch(["ethscription-api-exists-multi", shas], expires_in: 12.seconds) do
+      existing_ethscriptions = Ethscription.where(content_sha: shas).pluck(:content_sha, :transaction_hash)
+    
+      sha_to_transaction_hash = existing_ethscriptions.to_h
+    
+      shas.each do |sha|
+        sha_to_transaction_hash[sha] ||= nil
+      end
+      
+      sha_to_transaction_hash
+    end
+  
+    render json: { result: result }
   end
   
   def newer_ethscriptions

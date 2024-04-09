@@ -114,7 +114,14 @@ class Ethscription < ApplicationRecord
   end
   
   def as_json(options = {})
-    super(options).tap do |json|
+    super(options.merge(
+        except: [
+          :id,
+          :created_at,
+          :updated_at
+        ]
+      )
+    ).tap do |json|
       if options[:include_transfers]
         json[:ethscription_transfers] = ethscription_transfers.as_json
       end

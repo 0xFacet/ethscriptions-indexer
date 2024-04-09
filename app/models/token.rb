@@ -270,7 +270,12 @@ class Token < ApplicationRecord
   end
   
   def as_json(options = {})
-    super(options.merge(except: [:balances])).tap do |json|
+    super(options.merge(except: [
+      :balances,
+      :id,
+      :created_at,
+      :updated_at
+    ])).tap do |json|
       if options[:include_balances]
         json[:balances] = balances
       end

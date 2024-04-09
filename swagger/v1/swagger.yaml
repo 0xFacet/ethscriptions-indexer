@@ -407,6 +407,89 @@ paths:
                     type: string
                     example: Record not found
                 description: Error message indicating the ethscription was not found
+  "/ethscriptions/{tx_hash_or_ethscription_number}/attachment":
+    get:
+      summary: Show Ethscription Attachment Data
+      tags:
+      - Ethscriptions
+      operationId: getEthscriptionAttachment
+      description: 'Retrieves the raw attachment of an ethscription and serves it
+        according to its content type. Only available when an attachment is present.
+        Attachments are created via blobs per esip-8.
+
+        '
+      parameters:
+      - name: tx_hash_or_ethscription_number
+        in: path
+        required: true
+        description: The ethscription number or transaction hash to retrieve the attachment
+          for.
+        example: '0xcf23d640184114e9d870a95f0fdc3aa65e436c5457d5b6ee2e3c6e104420abd1'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Attachment retrieved successfully
+          headers:
+            Content-Type:
+              description: The MIME type of the attachment.
+              schema:
+                type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+                description: Returns the raw attachment data of an ethscription. The
+                  content type in the response depends on the ethscription’s attachment
+                  content type.
+                example: "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\a\\b\\t\\n\\v\\f\\r\\u000E\\u000F"
+            image/png:
+              schema:
+                type: string
+                format: binary
+                description: Returns the raw attachment data of an ethscription. The
+                  content type in the response depends on the ethscription’s attachment
+                  content type.
+                example: "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\a\\b\\t\\n\\v\\f\\r\\u000E\\u000F"
+            text/plain:
+              schema:
+                type: string
+                format: binary
+                description: Returns the raw attachment data of an ethscription. The
+                  content type in the response depends on the ethscription’s attachment
+                  content type.
+                example: "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\a\\b\\t\\n\\v\\f\\r\\u000E\\u000F"
+        '404':
+          description: Attachment not found
+          content:
+            application/octet-stream:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Attachment not found
+                description: Indicates that no attachment was found for the provided
+                  ID or transaction hash.
+            image/png:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Attachment not found
+                description: Indicates that no attachment was found for the provided
+                  ID or transaction hash.
+            text/plain:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Attachment not found
+                description: Indicates that no attachment was found for the provided
+                  ID or transaction hash.
   "/ethscriptions/exists/{sha}":
     get:
       summary: Check if Ethscription Exists

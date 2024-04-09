@@ -44,6 +44,10 @@ Rails.application.routes.draw do
   scope :api do
     draw_routes
   end
+  
+  scope :v2 do
+    draw_routes
+  end
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.

@@ -1,0 +1,745 @@
+---
+openapi: 3.0.1
+info:
+  title: Ethscriptions API V2
+  version: v2
+paths:
+  "/ethscriptions":
+    get:
+      summary: List Ethscriptions
+      tags:
+      - Ethscriptions
+      operationId: listEthscriptions
+      description: "Retrieves a list of ethscriptions, supporting various filters.
+        \nBy default, the results limit is set to 100. \nIf `transaction_hash_only`
+        is set to true, the results limit increases to 1000. \nIf `include_latest_transfer`
+        is set to true, the results limit is reduced to 50.\nNote: `transaction_hash_only`
+        and `include_latest_transfer` are mutually exclusive for determining the results
+        limit.\n"
+      parameters:
+      - name: current_owner
+        in: query
+        description: Filter by current owner address
+        schema:
+          type: string
+      - name: creator
+        in: query
+        description: Filter by creator address
+        schema:
+          type: string
+      - name: initial_owner
+        in: query
+        description: Filter by initial owner address
+        schema:
+          type: string
+      - name: previous_owner
+        in: query
+        description: Filter by previous owner address
+        schema:
+          type: string
+      - name: mimetype
+        in: query
+        description: Filter by MIME type
+        schema:
+          type: string
+      - name: media_type
+        in: query
+        description: Filter by media type
+        schema:
+          type: string
+      - name: mime_subtype
+        in: query
+        description: Filter by MIME subtype
+        schema:
+          type: string
+      - name: content_sha
+        in: query
+        description: Filter by content SHA hash
+        schema:
+          type: string
+      - name: transaction_hash
+        in: query
+        description: Filter by Ethereum transaction hash
+        schema:
+          type: string
+      - name: block_number
+        in: query
+        description: Filter by block number
+        schema:
+          type: string
+      - name: block_timestamp
+        in: query
+        description: Filter by block timestamp
+        schema:
+          type: string
+      - name: block_blockhash
+        in: query
+        description: Filter by block hash
+        schema:
+          type: string
+      - name: ethscription_number
+        in: query
+        description: Filter by ethscription number
+        schema:
+          type: string
+      - name: attachment_sha
+        in: query
+        description: Filter by attachment SHA hash
+        schema:
+          type: string
+      - name: attachment_content_type
+        in: query
+        description: Filter by attachment content type
+        schema:
+          type: string
+      - name: attachment_present
+        in: query
+        description: Filter by presence of an attachment
+        enum:
+        - 'true'
+        - 'false'
+        schema:
+          type: string
+      - name: token_tick
+        in: query
+        description: Filter by token tick
+        example: eths
+        schema:
+          type: string
+      - name: token_protocol
+        in: query
+        description: Filter by token protocol
+        example: erc-20
+        schema:
+          type: string
+      - name: transferred_in_tx
+        in: query
+        description: Filter by transfer transaction hash
+        schema:
+          type: string
+      - name: transaction_hash_only
+        in: query
+        description: Return only transaction hashes. When set to true, increases results
+          limit to 1000.
+        required: false
+        schema:
+          type: boolean
+      - name: include_latest_transfer
+        in: query
+        description: Include latest transfer information. When set to true, reduces
+          results limit to 50.
+        required: false
+        schema:
+          type: boolean
+      - name: sort_by
+        in: query
+        description: Defines the order of the records to be returned. Can be either
+          "newest_first" (default) or "oldest_first".
+        enum:
+        - newest_first
+        - oldest_first
+        required: false
+        default: newest_first
+        schema:
+          type: string
+      - name: reverse
+        in: query
+        description: When set to true, reverses the sort order specified by the `sort_by`
+          parameter.
+        required: false
+        example: 'false'
+        schema:
+          type: boolean
+      - name: max_results
+        in: query
+        description: Limits the number of results returned. Default value is 25, maximum
+          value is 50.
+        required: false
+        maximum: 50
+        default: 25
+        example: 25
+        schema:
+          type: integer
+      - name: page_key
+        in: query
+        description: Pagination key from the previous response. Used for fetching
+          the next set of results.
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ethscriptions list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Ethscription"
+                  pagination:
+                    "$ref": "#/components/schemas/PaginationObject"
+                description: A list of ethscriptions based on filter criteria.
+  "/ethscriptions/{transaction_hash}":
+    get:
+      summary: Show Ethscription
+      tags:
+      - Ethscriptions
+      operationId: getEthscriptionByTransactionHash
+      parameters:
+      - name: transaction_hash
+        in: path
+        description: Transaction hash of the ethscription
+        example: '0x0ef100873db4e3b7446e9a3be0432ab8bc92119d009aa200f70c210ac9dcd4a6'
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Ethscription retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    "$ref": "#/components/schemas/EthscriptionWithTransfers"
+                description: The ethscription's details
+        '404':
+          description: Ethscription not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Record not found
+                description: Error message indicating the ethscription was not found
+  "/ethscriptions/data/{tx_hash_or_ethscription_number}":
+    get:
+      summary: Show Ethscription Data
+      tags:
+      - Ethscriptions
+      operationId: getEthscriptionData
+      description: Retrieves the raw data of an ethscription as indicated by the content
+        type of the stored data URI.
+      parameters:
+      - name: tx_hash_or_ethscription_number
+        in: path
+        description: The ethscription number or transaction hash to retrieve data
+          for.
+        required: true
+        example: '0'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Data retrieved successfully
+          headers:
+            Content-Type:
+              description: The MIME type of the data.
+              schema:
+                type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+                description: Returns the raw data of an ethscription as indicated
+                  by the content type of the stored data URI. The content type in
+                  the response depends on the ethscription’s data.
+                example: "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\a\\b\\t\\n\\v\\f\\r\\u000E\\u000F"
+            image/png:
+              schema:
+                type: string
+                format: binary
+                description: Returns the raw data of an ethscription as indicated
+                  by the content type of the stored data URI. The content type in
+                  the response depends on the ethscription’s data.
+                example: "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\a\\b\\t\\n\\v\\f\\r\\u000E\\u000F"
+            text/plain:
+              schema:
+                type: string
+                format: binary
+                description: Returns the raw data of an ethscription as indicated
+                  by the content type of the stored data URI. The content type in
+                  the response depends on the ethscription’s data.
+                example: "\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\a\\b\\t\\n\\v\\f\\r\\u000E\\u000F"
+        '404':
+          description: Ethscription not found
+          content:
+            application/octet-stream:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Record not found
+                description: Error message indicating the ethscription was not found
+            image/png:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Record not found
+                description: Error message indicating the ethscription was not found
+            text/plain:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Record not found
+                description: Error message indicating the ethscription was not found
+  "/ethscriptions/exists/{sha}":
+    get:
+      summary: Check if Ethscription Exists
+      tags:
+      - Ethscriptions
+      operationId: checkEthscriptionExists
+      description: 'Checks if an Ethscription exists by its content SHA hash. Returns
+        a boolean indicating existence and, if present, the ethscription itself.
+
+        '
+      parameters:
+      - name: sha
+        in: path
+        required: true
+        description: The SHA hash of the ethscription content to check for existence.
+        example: '0x2817fd9cf901e4435253881550731a5edc5e519c19de46b08e2b19a18e95143e'
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Check performed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: object
+                    properties:
+                      exists:
+                        type: boolean
+                        example: true
+                      ethscription:
+                        "$ref": "#/components/schemas/Ethscription"
+                description: A boolean indicating whether the Ethscription exists,
+                  and the Ethscription itself if it does.
+  "/ethscriptions/exists_multi":
+    post:
+      summary: Check Multiple Ethscriptions Existence
+      tags:
+      - Ethscriptions
+      operationId: checkMultipleEthscriptionsExistence
+      description: 'Accepts a list of SHA hashes and checks for the existence of Ethscriptions
+        corresponding to each SHA. Returns a mapping from SHA hashes to their corresponding
+        Ethscription transaction hashes, if found; otherwise maps to nil. Max input:
+        100 shas.
+
+        '
+      parameters: []
+      responses:
+        '200':
+          description: Existence check performed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: object
+                    additionalProperties:
+                      type: string
+                      nullable: true
+                      description: Transaction hash associated with the SHA. Null
+                        if the SHA does not correspond to an existing Ethscription.
+                    description: Mapping from SHA hashes to Ethscription transaction
+                      hashes or null if the Ethscription does not exist.
+                description: Successfully returns a mapping from provided SHA hashes
+                  to their corresponding Ethscription transaction hashes or null if
+                  not found.
+                example:
+                  result:
+                    '0x2817fd9cf901e4435253881550731a5edc5e519c19de46b08e2b19a18e95143e': '0xcf23d640184114e9d870a95f0fdc3aa65e436c5457d5b6ee2e3c6e104420abd1'
+                    '0xdcb130d85be00f8fd735ddafcba1cc83f99ba8dab0fc79c833401827b615c92b':
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                shas:
+                  type: array
+                  items:
+                    type: string
+                  description: An array of SHA hashes to check for Ethscription existence.
+                  example:
+                  - '0x2817fd9cf901e4435253881550731a5edc5e519c19de46b08e2b19a18e95143e'
+                  - '0xdcb130d85be00f8fd735ddafcba1cc83f99ba8dab0fc79c833401827b615c92b'
+              required:
+              - shas
+  "/ethscriptions/newer":
+    get:
+      summary: Retrieve Newer Ethscriptions
+      tags:
+      - Ethscriptions
+      operationId: getNewerEthscriptions
+      description: 'Retrieves Ethscriptions that are newer than a specified block
+        number, optionally filtered by mimetype, initial owner, and other criteria.
+        Returns Ethscriptions grouped by block, including block metadata and a count
+        of total future Ethscriptions.
+
+        '
+      parameters:
+      - name: mimetypes
+        in: query
+        items:
+          type: string
+        description: Optional list of mimetypes to filter Ethscriptions by.
+        required: false
+        schema:
+          type: array
+      - name: initial_owner
+        in: query
+        description: Optional initial owner to filter Ethscriptions by.
+        required: false
+        schema:
+          type: string
+      - name: block_number
+        in: query
+        description: Block number to start retrieving newer Ethscriptions from.
+        required: true
+        schema:
+          type: integer
+      - name: past_ethscriptions_count
+        in: query
+        description: Optional count of past Ethscriptions for checksum validation.
+        required: false
+        schema:
+          type: integer
+      - name: past_ethscriptions_checksum
+        in: query
+        description: Optional checksum of past Ethscriptions for validation.
+        required: false
+        schema:
+          type: string
+      - name: max_ethscriptions
+        in: query
+        description: Maximum number of Ethscriptions to return.
+        required: false
+        example: 50
+        schema:
+          type: integer
+      - name: max_blocks
+        in: query
+        description: Maximum number of blocks to include in the response.
+        required: false
+        example: 500
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Newer Ethscriptions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_future_ethscriptions:
+                    type: integer
+                    example: 100
+                  blocks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        blockhash:
+                          type: string
+                        parent_blockhash:
+                          type: string
+                        block_number:
+                          type: integer
+                        timestamp:
+                          type: integer
+                        ethscriptions:
+                          type: array
+                          items:
+                            "$ref": "#/components/schemas/Ethscription"
+                    description: List of blocks with their Ethscriptions.
+                description: A list of newer Ethscriptions grouped by block, including
+                  metadata about each block and a count of total future Ethscriptions.
+        '422':
+          description: Unprocessable entity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                      resolution:
+                        type: string
+                description: Error response for various failure scenarios, such as
+                  block not yet imported or checksum mismatch.
+components:
+  schemas:
+    Ethscription:
+      type: object
+      properties:
+        transaction_hash:
+          type: string
+          example: '0x0ef100873db4e3b7446e9a3be0432ab8bc92119d009aa200f70c210ac9dcd4a6'
+          description: Hash of the Ethereum transaction.
+        block_number:
+          type: string
+          example: '19619510'
+          description: Block number where the transaction was included.
+        transaction_index:
+          type: string
+          example: '88'
+          description: Transaction index within the block.
+        block_timestamp:
+          type: string
+          example: '1712682959'
+          description: Timestamp for when the block was mined.
+        block_blockhash:
+          type: string
+          example: '0xa44323fa6404b446665037ec61a09fc8526144154cb3742bcd254c7ef054ab0c'
+          description: Hash of the block.
+        ethscription_number:
+          type: string
+          example: '5853618'
+          description: Unique identifier for the ethscription.
+        creator:
+          type: string
+          example: '0xc27b42d010c1e0f80c6c0c82a1a7170976adb340'
+          description: Address of the ethscription creator.
+        initial_owner:
+          type: string
+          example: '0x00000000000000000000000000000000000face7'
+          description: Initial owner of the ethscription.
+        current_owner:
+          type: string
+          example: '0x00000000000000000000000000000000000face7'
+          description: Current owner of the ethscription.
+        previous_owner:
+          type: string
+          example: '0xc27b42d010c1e0f80c6c0c82a1a7170976adb340'
+          description: Previous owner of the ethscription before the current owner.
+        content_uri:
+          type: string
+          example: data:application/vnd.facet.tx+json;rule=esip6,{...}
+          description: URI encoding the data and rule for the ethscription.
+        content_sha:
+          type: string
+          example: '0xda6dce30c4c09885ed8538c9e33ae43cfb392f5f6d42a62189a446093929e115'
+          description: SHA hash of the content.
+        esip6:
+          type: boolean
+          example: true
+          description: Indicator of whether the ethscription conforms to ESIP-6.
+        mimetype:
+          type: string
+          example: application/vnd.facet.tx+json
+          description: MIME type of the ethscription.
+        gas_price:
+          type: string
+          example: '37806857216'
+          description: Gas price used for the transaction.
+        gas_used:
+          type: string
+          example: '27688'
+          description: Amount of gas used by the transaction.
+        transaction_fee:
+          type: string
+          example: '1046796262596608'
+          description: Total fee of the transaction.
+        value:
+          type: string
+          example: '0'
+          description: Value transferred in the transaction.
+        attachment_sha:
+          type: string
+          nullable: true
+          example: '0x0ef100873db4e3b7446e9a3be0432ab8bc92119d009aa200f70c210ac9dcd4a6'
+          description: SHA hash of the attachment.
+        attachment_content_type:
+          type: string
+          nullable: true
+          example: text/plain
+          description: MIME type of the attachment.
+    EthscriptionWithTransfers:
+      type: object
+      properties:
+        transaction_hash:
+          type: string
+          example: '0x0ef100873db4e3b7446e9a3be0432ab8bc92119d009aa200f70c210ac9dcd4a6'
+          description: Hash of the Ethereum transaction.
+        block_number:
+          type: string
+          example: '19619510'
+          description: Block number where the transaction was included.
+        transaction_index:
+          type: string
+          example: '88'
+          description: Transaction index within the block.
+        block_timestamp:
+          type: string
+          example: '1712682959'
+          description: Timestamp for when the block was mined.
+        block_blockhash:
+          type: string
+          example: '0xa44323fa6404b446665037ec61a09fc8526144154cb3742bcd254c7ef054ab0c'
+          description: Hash of the block.
+        ethscription_number:
+          type: string
+          example: '5853618'
+          description: Unique identifier for the ethscription.
+        creator:
+          type: string
+          example: '0xc27b42d010c1e0f80c6c0c82a1a7170976adb340'
+          description: Address of the ethscription creator.
+        initial_owner:
+          type: string
+          example: '0x00000000000000000000000000000000000face7'
+          description: Initial owner of the ethscription.
+        current_owner:
+          type: string
+          example: '0x00000000000000000000000000000000000face7'
+          description: Current owner of the ethscription.
+        previous_owner:
+          type: string
+          example: '0xc27b42d010c1e0f80c6c0c82a1a7170976adb340'
+          description: Previous owner of the ethscription before the current owner.
+        content_uri:
+          type: string
+          example: data:application/vnd.facet.tx+json;rule=esip6,{...}
+          description: URI encoding the data and rule for the ethscription.
+        content_sha:
+          type: string
+          example: '0xda6dce30c4c09885ed8538c9e33ae43cfb392f5f6d42a62189a446093929e115'
+          description: SHA hash of the content.
+        esip6:
+          type: boolean
+          example: true
+          description: Indicator of whether the ethscription conforms to ESIP-6.
+        mimetype:
+          type: string
+          example: application/vnd.facet.tx+json
+          description: MIME type of the ethscription.
+        gas_price:
+          type: string
+          example: '37806857216'
+          description: Gas price used for the transaction.
+        gas_used:
+          type: string
+          example: '27688'
+          description: Amount of gas used by the transaction.
+        transaction_fee:
+          type: string
+          example: '1046796262596608'
+          description: Total fee of the transaction.
+        value:
+          type: string
+          example: '0'
+          description: Value transferred in the transaction.
+        attachment_sha:
+          type: string
+          nullable: true
+          example: '0x0ef100873db4e3b7446e9a3be0432ab8bc92119d009aa200f70c210ac9dcd4a6'
+          description: SHA hash of the attachment.
+        attachment_content_type:
+          type: string
+          nullable: true
+          example: text/plain
+          description: MIME type of the attachment.
+        transfers:
+          type: array
+          items:
+            "$ref": "#/components/schemas/EthscriptionTransfer"
+          description: Array of transfers associated with the ethscription.
+          example:
+          - ethscription_transaction_hash: '0x4c5d41acd5de9db720897c1548d49422508e053a6ab6ea9c123b49d0c5322ce9'
+            transaction_hash: '0x707bb3f87c719516059c61cab02da680402e97ec5a88827fd00952b7d158894f'
+            from_address: '0xfb833cb7df301c045956eabd420691ea3e76b94f'
+            to_address: '0x1f1edbdb5d771db208437cfa6e8a3aeac13f544b'
+            block_number: '19619724'
+            block_timestamp: '1712685539'
+            block_blockhash: '0x0204cbc51acb8aae3bc55a5a3f7b26aa843c8b9e3593bc4e6ed21c931347fc23'
+            event_log_index:
+            transfer_index: '51'
+            transaction_index: '95'
+            enforced_previous_owner:
+  EthscriptionTransfer:
+    type: object
+    properties:
+      ethscription_transaction_hash:
+        type: string
+        example: 0x4c5d41...
+        description: Hash of the ethscription associated with the transfer.
+      transaction_hash:
+        type: string
+        example: 0x707bb3...
+        description: Hash of the Ethereum transaction that performed the transfer.
+      from_address:
+        type: string
+        example: 0xfb833c...
+        description: Address of the sender in the transfer.
+      to_address:
+        type: string
+        example: 0x1f1edb...
+        description: Address of the recipient in the transfer.
+      block_number:
+        type: integer
+        example: 19619724
+        description: Block number where the transfer was recorded.
+      block_timestamp:
+        type: integer
+        example: 1712685539
+        description: Timestamp for when the block containing the transfer was mined.
+      block_blockhash:
+        type: string
+        example: 0x0204cb...
+        description: Hash of the block containing the transfer.
+      event_log_index:
+        type: integer
+        example:
+        description: Index of the event log that recorded the transfer.
+        nullable: true
+      transfer_index:
+        type: string
+        example: '51'
+        description: Index of the transfer in the transaction.
+      transaction_index:
+        type: integer
+        example: 95
+        description: Transaction index within the block.
+      enforced_previous_owner:
+        type: string
+        example:
+        description: Enforced previous owner of the ethscription, if applicable.
+        nullable: true
+  PaginationObject:
+    type: object
+    properties:
+      page_key:
+        type: string
+        example: 18680069-4-1
+        description: Key for the next page of results. Supply this in the page_key
+          query parameter to retrieve the next set of items.
+      has_more:
+        type: boolean
+        example: true
+        description: Indicates if more items are available beyond the current page.
+    description: Contains pagination details to navigate through the list of records.
+servers:
+- url: https://api.ethscriptions.com/v2

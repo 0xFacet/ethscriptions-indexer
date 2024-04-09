@@ -34,6 +34,7 @@ group :development, :test do
   gem "debug", platforms: %i[ mri mswin mswin64 mingw x64_mingw ]
   gem "pry"
   gem "rspec-rails"
+  gem 'rswag-specs'
 end
 
 group :development do
@@ -78,3 +79,7 @@ gem "order_query", "~> 0.5.3"
 gem 'facet_rails_common', git: 'https://github.com/0xfacet/facet_rails_common.git'
 
 gem "cbor", "~> 0.5.9"
+
+gem 'rswag-api'
+
+gem 'rswag-ui'

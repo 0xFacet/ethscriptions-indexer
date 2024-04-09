@@ -14,12 +14,29 @@ RSpec.configure do |config|
   # By default, the operations defined in spec files are added to the first
   # document below. You can override this behavior by adding a openapi_spec tag to the
   # the root example_group in your specs, e.g. describe '...', openapi_spec: 'v2/swagger.json'
+  
+  intro = <<~DESC
+  ## Overview
+  
+  Welcome to the Ethscriptions Indexer API docs!
+  
+  This API enables you to learn everything about the ethscriptions protocol. All instances of the open source [Ethscriptions Indexer](https://github.com/0xFacet/ethscriptions-indexer) expose this API.
+  
+  If you don't want to run your own instance of the indexer you can use ours for free using the base URL `https://api.ethscriptions.com/v2`.
+  
+  ## Community and Support
+        
+  Join our community on [GitHub](https://github.com/0xFacet/ethscriptions-indexer) and [Discord](https://discord.gg/ethscriptions) to contribute, get support, and share your experiences with the Ethscriptions Indexer.
+  
+  DESC
+  
   config.openapi_specs = {
     'v1/swagger.yaml' => {
       openapi: '3.0.1',
       info: {
         title: 'Ethscriptions API V2',
-        version: 'v2'
+        version: 'v2',
+        description: intro,
       },
       paths: {},
       tags: [

@@ -120,7 +120,7 @@ RSpec.describe 'Ethscriptions API', doc: true do
                 required: true,
                 example: "0"
 
-      response '200', 'Data retrieved successfully' do\
+      response '200', 'Data retrieved successfully' do
         header 'Content-Type', description: 'The MIME type of the data.', schema: { type: :string }
 
         schema type: :string,
@@ -144,12 +144,12 @@ RSpec.describe 'Ethscriptions API', doc: true do
   end
   
   path '/ethscriptions/{tx_hash_or_ethscription_number}/attachment' do
-    get 'Show Ethscription Attachment' do
+    get 'Show Ethscription Attachment Data' do
       tags 'Ethscriptions'
       operationId 'getEthscriptionAttachment'
       produces 'application/octet-stream', 'image/png', 'text/plain'
       description <<~DESC
-        Retrieves the raw content data of an ethscription and serves it according to its content type. Only available when an attachment is present.
+        Retrieves the raw attachment of an ethscription and serves it according to its content type. Only available when an attachment is present. Attachments are created via blobs per esip-8.
       DESC
   
       parameter name: :tx_hash_or_ethscription_number, in: :path, type: :string, required: true,
@@ -157,12 +157,14 @@ RSpec.describe 'Ethscriptions API', doc: true do
                 example: '0xcf23d640184114e9d870a95f0fdc3aa65e436c5457d5b6ee2e3c6e104420abd1'
   
       response '200', 'Attachment retrieved successfully' do
+        header 'Content-Type', description: 'The MIME type of the attachment.', schema: { type: :string }
+
         schema type: :string,
                format: :binary,
-               description: 'Returns the raw data of the attachment as indicated by the content type of the stored attachment data. The content type in the response depends on the attachment’s data.',
-               example: '\u0000\u0001\u0002\u0003...' # Use a relevant binary data example
-  
-        header 'Content-Type', description: 'The MIME type of the attachment.', schema: { type: :string }
+               description: 'Returns the raw attachment data of an ethscription. The content type in the response depends on the ethscription’s attachment content type.',
+               example: '\u0000\u0001\u0002\u0003\u0004\u0005\u0006\a\b\t\n\v\f\r\u000E\u000F'
+
+        run_test!
       end
   
       response '404', 'Attachment not found' do
@@ -171,6 +173,8 @@ RSpec.describe 'Ethscriptions API', doc: true do
                  error: { type: :string, example: 'Attachment not found' }
                },
                description: 'Indicates that no attachment was found for the provided ID or transaction hash.'
+               
+        run_test!
       end
     end
   end

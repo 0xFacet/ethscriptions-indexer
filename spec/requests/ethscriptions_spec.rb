@@ -8,10 +8,12 @@ RSpec.describe 'Ethscriptions API', doc: true do
       produces 'application/json'
       description <<~DESC
         Retrieves a list of ethscriptions, supporting various filters. 
-        By default, the results limit is set to 100. 
-        If `transaction_hash_only` is set to true, the results limit increases to 1000. 
-        If `include_latest_transfer` is set to true, the results limit is reduced to 50.
-        Note: `transaction_hash_only` and `include_latest_transfer` are mutually exclusive for determining the results limit.
+        By default, the results limit is set to 100.
+        
+        - If `transaction_hash_only` is set to true, the results limit increases to 1000.
+        - If `include_latest_transfer` is set to true, the results limit is reduced to 50.
+        
+        The filter parameters below can be either individual values or arrays of values.
       DESC
       
       parameter name: :current_owner, in: :query, type: :string, description: 'Filter by current owner address'
@@ -74,6 +76,7 @@ RSpec.describe 'Ethscriptions API', doc: true do
       tags 'Ethscriptions'
       operationId 'getEthscriptionByTransactionHash'
       produces 'application/json'
+      description 'Retrieves an ethscription, including its transfers, by its transaction hash.'
       parameter name: :transaction_hash,
                 in: :path,
                 type: :string,
@@ -108,7 +111,7 @@ RSpec.describe 'Ethscriptions API', doc: true do
       tags 'Ethscriptions'
       operationId 'getEthscriptionData'
       produces 'application/octet-stream', 'image/png', 'text/plain'
-      description 'Retrieves the raw data of an ethscription as indicated by the content type of the stored data URI.'
+      description 'Retrieves the raw content data of an ethscription and serves it according to its content type.'
       
       parameter name: :tx_hash_or_ethscription_number,
                 in: :path,
@@ -146,7 +149,7 @@ RSpec.describe 'Ethscriptions API', doc: true do
       operationId 'getEthscriptionAttachment'
       produces 'application/octet-stream', 'image/png', 'text/plain'
       description <<~DESC
-        Retrieves the attachment for an ethscription, identified by the ethscription number or transaction hash. The actual content type of the attachment depends on the stored attachment's data.
+        Retrieves the raw content data of an ethscription and serves it according to its content type. Only available when an attachment is present.
       DESC
   
       parameter name: :tx_hash_or_ethscription_number, in: :path, type: :string, required: true,
@@ -218,7 +221,7 @@ RSpec.describe 'Ethscriptions API', doc: true do
       consumes 'application/json'
       produces 'application/json'
       description <<~DESC
-        Accepts a list of SHA hashes and checks for the existence of Ethscriptions corresponding to each SHA. Returns a mapping from SHA hashes to their corresponding Ethscription transaction hashes, if found; otherwise maps to nil. Max input: 100 shas.
+        Accepts a list of SHA hashes and checks for the existence of Ethscriptions corresponding to each SHA. Returns a mapping from SHA hashes to their corresponding Ethscription transaction hashes, if found; otherwise maps to `null`. Max input: 100 shas.
       DESC
   
       parameter name: :shas, in: :body, schema: {

@@ -22,6 +22,24 @@ RSpec.configure do |config|
         version: 'v2'
       },
       paths: {},
+      tags: [
+        {
+          name: 'Ethscriptions',
+          description: 'Endpoints for querying ethscriptions.'
+        },
+        {
+          name: 'Ethscription Transfers',
+          description: 'Endpoints for querying ethscription transfers.'
+        },
+        {
+          name: 'Tokens',
+          description: 'Endpoints for querying tokens. Note: token indexing is an optional feature and different indexers might index different tokens.'
+        },
+        {
+          name: 'Status',
+          description: 'Endpoints for querying indexer status.'
+        },
+      ],
       components: {
         schemas: {
           Ethscription: {
@@ -49,76 +67,90 @@ RSpec.configure do |config|
               attachment_content_type: { type: :string, nullable: true, example: 'text/plain', description: 'MIME type of the attachment.' }
             },
           },
-        },
-        EthscriptionTransfer: {
-          type: :object,
-          properties: {
-            ethscription_transaction_hash: { 
-              type: :string, 
-              example: '0x4c5d41...',
-              description: 'Hash of the ethscription associated with the transfer.'
+          EthscriptionTransfer: {
+            type: :object,
+            properties: {
+              ethscription_transaction_hash: { 
+                type: :string, 
+                example: '0x4c5d41...',
+                description: 'Hash of the ethscription associated with the transfer.'
+              },
+              transaction_hash: { 
+                type: :string, 
+                example: '0x707bb3...',
+                description: 'Hash of the Ethereum transaction that performed the transfer.'
+              },
+              from_address: { 
+                type: :string, 
+                example: '0xfb833c...',
+                description: 'Address of the sender in the transfer.'
+              },
+              to_address: { 
+                type: :string, 
+                example: '0x1f1edb...',
+                description: 'Address of the recipient in the transfer.'
+              },
+              block_number: { 
+                type: :integer, 
+                example: 19619724, 
+                description: 'Block number where the transfer was recorded.'
+              },
+              block_timestamp: { 
+                type: :integer, 
+                example: 1712685539, 
+                description: 'Timestamp for when the block containing the transfer was mined.'
+              },
+              block_blockhash: { 
+                type: :string, 
+                example: '0x0204cb...',
+                description: 'Hash of the block containing the transfer.'
+              },
+              event_log_index: { 
+                type: :integer, 
+                example: nil, 
+                description: 'Index of the event log that recorded the transfer.',
+                nullable: true
+              },
+              transfer_index: { 
+                type: :string, 
+                example: '51', 
+                description: 'Index of the transfer in the transaction.'
+              },
+              transaction_index: { 
+                type: :integer, 
+                example: 95, 
+                description: 'Transaction index within the block.'
+              },
+              enforced_previous_owner: { 
+                type: :string, 
+                example: nil, 
+                description: 'Enforced previous owner of the ethscription, if applicable.',
+                nullable: true
+              }
             },
-            transaction_hash: { 
-              type: :string, 
-              example: '0x707bb3...',
-              description: 'Hash of the Ethereum transaction that performed the transfer.'
-            },
-            from_address: { 
-              type: :string, 
-              example: '0xfb833c...',
-              description: 'Address of the sender in the transfer.'
-            },
-            to_address: { 
-              type: :string, 
-              example: '0x1f1edb...',
-              description: 'Address of the recipient in the transfer.'
-            },
-            block_number: { 
-              type: :integer, 
-              example: 19619724, 
-              description: 'Block number where the transfer was recorded.'
-            },
-            block_timestamp: { 
-              type: :integer, 
-              example: 1712685539, 
-              description: 'Timestamp for when the block containing the transfer was mined.'
-            },
-            block_blockhash: { 
-              type: :string, 
-              example: '0x0204cb...',
-              description: 'Hash of the block containing the transfer.'
-            },
-            event_log_index: { 
-              type: :integer, 
-              example: nil, 
-              description: 'Index of the event log that recorded the transfer.',
-              nullable: true
-            },
-            transfer_index: { 
-              type: :string, 
-              example: '51', 
-              description: 'Index of the transfer in the transaction.'
-            },
-            transaction_index: { 
-              type: :integer, 
-              example: 95, 
-              description: 'Transaction index within the block.'
-            },
-            enforced_previous_owner: { 
-              type: :string, 
-              example: nil, 
-              description: 'Enforced previous owner of the ethscription, if applicable.',
-              nullable: true
-            }
           },
-        },
-        PaginationObject: {
-          type: :object,
-          properties: {
-            page_key: { type: :string, example: '18680069-4-1', description: 'Key for the next page of results. Supply this in the page_key query parameter to retrieve the next set of items.' },
-            has_more: { type: :boolean, example: true, description: 'Indicates if more items are available beyond the current page.' }
+          Token: {
+            type: :object,
+            properties: {
+              deploy_ethscription_transaction_hash: { type: :string, example: '0xc8115ff794c6a077bdca1be18408e45394083debe026e9136ed26355b52f6d0d', description: 'The transaction hash of the Ethscription that deployed the token.' },
+              deploy_block_number: { type: :string, example: '18997063', description: 'The block number in which the token was deployed.' },
+              deploy_transaction_index: { type: :string, example: '67', description: 'The index of the transaction in the block in which the token was deployed.' },
+              protocol: { type: :string, example: 'erc-20', description: 'The protocol of the token.' },
+              tick: { type: :string, example: 'nodes', description: 'The tick (symbol) of the token.' },
+              max_supply: { type: :string, example: '10000000000', description: 'The maximum supply of the token.' },
+              total_supply: { type: :string, example: '10000000000', description: 'The current total supply of the token.' },
+              mint_amount: { type: :string, example: '10000', description: 'The amount of tokens minted.' }
+            },
+            description: 'Represents a token, including its deployment information, protocol, and supply details.'
           },
-          description: 'Contains pagination details to navigate through the list of records.'
+          PaginationObject: {
+            type: :object,
+            properties: {
+              page_key: { type: :string, example: '18680069-4-1', description: 'Key for the next page of results. Supply this in the page_key query parameter to retrieve the next set of items.' },
+              has_more: { type: :boolean, example: true, description: 'Indicates if more items are available beyond the current page.' }
+            },
+            description: 'Contains pagination details to navigate through the list of records.'
+          }
         }
       },
       servers: [
@@ -139,18 +171,7 @@ RSpec.configure do |config|
       items: {
         '$ref': '#/components/schemas/EthscriptionTransfer'
       },
-      description: 'Array of transfers associated with the ethscription.',
-      example: [{"ethscription_transaction_hash"=>"0x4c5d41acd5de9db720897c1548d49422508e053a6ab6ea9c123b49d0c5322ce9",
-        "transaction_hash"=>"0x707bb3f87c719516059c61cab02da680402e97ec5a88827fd00952b7d158894f",
-        "from_address"=>"0xfb833cb7df301c045956eabd420691ea3e76b94f",
-        "to_address"=>"0x1f1edbdb5d771db208437cfa6e8a3aeac13f544b",
-        "block_number"=>"19619724",
-        "block_timestamp"=>"1712685539",
-        "block_blockhash"=>"0x0204cbc51acb8aae3bc55a5a3f7b26aa843c8b9e3593bc4e6ed21c931347fc23",
-        "event_log_index"=>nil,
-        "transfer_index"=>"51",
-        "transaction_index"=>"95",
-        "enforced_previous_owner"=>nil}]
+      description: 'Array of transfers associated with the ethscription.'
     }
   }
 
@@ -165,6 +186,39 @@ RSpec.configure do |config|
 
   # Add the new component to the OpenAPI specification
   config.openapi_specs['v1/swagger.yaml'][:components][:schemas][:EthscriptionWithTransfers] = ethscription_with_transfers_component
+  
+  # Retrieve the existing TokenObject component schema
+  token_component = config.openapi_specs['v1/swagger.yaml'][:components][:schemas][:Token]
+
+  # Define the additional property for balances
+  balances_property = {
+    balances: {
+      type: :object,
+      additionalProperties: {
+        type: :string
+      },
+      description: 'A mapping of wallet addresses to their respective token balances.',
+      example: {
+        "0x000000000006f291b587f39b6960dd32e31400bf": "5595650000",
+        "0x0000000a0705080fae54fd5cd2041a996a1d59ed": "5660000",
+        "0x00007fd644a03bc613b222a5c2e661861d71c424": "10000",
+        "0x000112a490277649e5d4d02ffd8a58bb002d0ed4": "690000"
+      }
+    }
+  }
+
+  # Merge the additional property into the existing properties of TokenObject
+  updated_properties = token_component[:properties].merge(balances_property)
+
+  # Create a new component schema that includes the updated properties
+  token_with_balances_component = token_component.merge({
+    type: token_component[:type],
+    properties: updated_properties
+  })
+
+  # Add the new component schema to the openapi_specs
+  config.openapi_specs['v1/swagger.yaml'][:components][:schemas][:TokenWithBalances] = token_with_balances_component
+
   
   # Specify the format of the output Swagger file when running 'rswag:specs:swaggerize'.
   # The openapi_specs configuration option has the filename including format in

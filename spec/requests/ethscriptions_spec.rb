@@ -71,16 +71,16 @@ RSpec.describe 'Ethscriptions API', doc: true do
     end
   end
   
-  path '/ethscriptions/{transaction_hash}' do
+  path '/ethscriptions/{tx_hash_or_ethscription_number}' do
     get 'Show Ethscription' do
       tags 'Ethscriptions'
       operationId 'getEthscriptionByTransactionHash'
       produces 'application/json'
       description 'Retrieves an ethscription, including its transfers, by its transaction hash.'
-      parameter name: :transaction_hash,
+      parameter name: :tx_hash_or_ethscription_number,
                 in: :path,
                 type: :string,
-                description: 'Transaction hash of the ethscription',
+                description: 'Transaction hash or ethscription number of the ethscription',
                 example: "0x0ef100873db4e3b7446e9a3be0432ab8bc92119d009aa200f70c210ac9dcd4a6",
                 required: true
                 
@@ -106,7 +106,7 @@ RSpec.describe 'Ethscriptions API', doc: true do
     end
   end
   
-  path '/ethscriptions/data/{tx_hash_or_ethscription_number}' do
+  path '/ethscriptions/{tx_hash_or_ethscription_number}/data' do
     get 'Show Ethscription Data' do
       tags 'Ethscriptions'
       operationId 'getEthscriptionData'
@@ -143,7 +143,7 @@ RSpec.describe 'Ethscriptions API', doc: true do
     end
   end
   
-  path '/ethscriptions/attachment/{tx_hash_or_ethscription_number}' do
+  path '/ethscriptions/{tx_hash_or_ethscription_number}/attachment' do
     get 'Show Ethscription Attachment' do
       tags 'Ethscriptions'
       operationId 'getEthscriptionAttachment'

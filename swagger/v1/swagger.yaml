@@ -3,6 +3,14 @@ openapi: 3.0.1
 info:
   title: Ethscriptions API V2
   version: v2
+  description: "## Overview\n\nWelcome to the Ethscriptions Indexer API docs!\n\nThis
+    API enables you to learn everything about the ethscriptions protocol. All instances
+    of the open source [Ethscriptions Indexer](https://github.com/0xFacet/ethscriptions-indexer)
+    expose this API.\n\nIf you don't want to run your own instance of the indexer
+    you can use ours for free using the base URL `https://api.ethscriptions.com/v2`.\n\n##
+    Community and Support\n      \nJoin our community on [GitHub](https://github.com/0xFacet/ethscriptions-indexer)
+    and [Discord](https://discord.gg/ethscriptions) to contribute, get support, and
+    share your experiences with the Ethscriptions Indexer.\n\n"
 paths:
   "/ethscription_transfers":
     get:
@@ -284,7 +292,7 @@ paths:
                   pagination:
                     "$ref": "#/components/schemas/PaginationObject"
                 description: A list of ethscriptions based on filter criteria.
-  "/ethscriptions/{transaction_hash}":
+  "/ethscriptions/{tx_hash_or_ethscription_number}":
     get:
       summary: Show Ethscription
       tags:
@@ -293,9 +301,9 @@ paths:
       description: Retrieves an ethscription, including its transfers, by its transaction
         hash.
       parameters:
-      - name: transaction_hash
+      - name: tx_hash_or_ethscription_number
         in: path
-        description: Transaction hash of the ethscription
+        description: Transaction hash or ethscription number of the ethscription
         example: '0x0ef100873db4e3b7446e9a3be0432ab8bc92119d009aa200f70c210ac9dcd4a6'
         required: true
         schema:
@@ -322,7 +330,7 @@ paths:
                     type: string
                     example: Record not found
                 description: Error message indicating the ethscription was not found
-  "/ethscriptions/data/{tx_hash_or_ethscription_number}":
+  "/ethscriptions/{tx_hash_or_ethscription_number}/data":
     get:
       summary: Show Ethscription Data
       tags:

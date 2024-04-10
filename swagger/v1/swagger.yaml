@@ -227,6 +227,20 @@ paths:
         description: Filter by transfer transaction hash
         schema:
           type: string
+      - name: after_block
+        in: query
+        description: Filter by block number, returning only ethscriptions after the
+          specified block.
+        required: false
+        schema:
+          type: integer
+      - name: before_block
+        in: query
+        description: Filter by block number, returning only ethscriptions before the
+          specified block.
+        required: false
+        schema:
+          type: integer
       - name: transaction_hash_only
         in: query
         description: Return only transaction hashes. When set to true, increases results

@@ -24,6 +24,14 @@ class EthscriptionsController < ApplicationController
       :attachment_content_type
     )
     
+    if params[:after_block].present?
+      scope = scope.where('block_number > ?', params[:after_block].to_i)
+    end
+    
+    if params[:before_block].present?
+      scope = scope.where('block_number < ?', params[:before_block].to_i)
+    end
+    
     scope = scope.where.not(attachment_sha: nil) if params[:attachment_present] == "true"
     scope = scope.where(attachment_sha: nil) if params[:attachment_present] == "false"
 

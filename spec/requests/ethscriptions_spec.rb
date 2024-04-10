@@ -36,6 +36,18 @@ RSpec.describe 'Ethscriptions API', doc: true do
       parameter name: :token_protocol, in: :query, type: :string, description: 'Filter by token protocol', example: "erc-20"
       parameter name: :transferred_in_tx, in: :query, type: :string, description: 'Filter by transfer transaction hash'
       
+      parameter name: :after_block, 
+                in: :query, 
+                type: :integer, 
+                description: 'Filter by block number, returning only ethscriptions after the specified block.',
+                required: false
+
+      parameter name: :before_block, 
+                in: :query, 
+                type: :integer, 
+                description: 'Filter by block number, returning only ethscriptions before the specified block.',
+                required: false
+      
       parameter name: :transaction_hash_only, 
                 in: :query, 
                 type: :boolean, 

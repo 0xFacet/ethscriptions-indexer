@@ -10,34 +10,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: heroku_ext; Type: SCHEMA; Schema: -; Owner: -
---
-
-CREATE SCHEMA heroku_ext;
-
-
---
--- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON SCHEMA public IS '';
-
-
---
--- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA heroku_ext;
-
-
---
--- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
-
-
---
 -- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
 --
 
@@ -1357,6 +1329,20 @@ CREATE INDEX index_ethscriptions_on_previous_owner ON public.ethscriptions USING
 
 
 --
+-- Name: index_ethscriptions_on_sha_blocknum_txindex_asc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscriptions_on_sha_blocknum_txindex_asc ON public.ethscriptions USING btree (attachment_sha, block_number, transaction_index);
+
+
+--
+-- Name: index_ethscriptions_on_sha_blocknum_txindex_desc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ethscriptions_on_sha_blocknum_txindex_desc ON public.ethscriptions USING btree (attachment_sha, block_number DESC, transaction_index DESC);
+
+
+--
 -- Name: index_ethscriptions_on_transaction_hash; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1417,6 +1403,13 @@ CREATE UNIQUE INDEX index_tokens_on_deploy_ethscription_transaction_hash ON publ
 --
 
 CREATE UNIQUE INDEX index_tokens_on_protocol_and_tick ON public.tokens USING btree (protocol, tick);
+
+
+--
+-- Name: inx_ethscriptions_on_blk_num_tx_index_with_att_not_null_asc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX inx_ethscriptions_on_blk_num_tx_index_with_att_not_null_asc ON public.ethscriptions USING btree (block_number, transaction_index) WHERE (attachment_sha IS NOT NULL);
 
 
 --
@@ -1601,6 +1594,7 @@ ALTER TABLE ONLY public.token_items
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20240411154249'),
 ('20240327135159'),
 ('20240317200158'),
 ('20240315184639'),

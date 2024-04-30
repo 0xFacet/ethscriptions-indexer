@@ -124,6 +124,8 @@ class EthscriptionsController < ApplicationController
       return
     end
     
+    response.headers.delete('X-Frame-Options')
+    
     set_cache_control_headers(
       max_age: 6,
       s_max_age: 1.minute,
@@ -155,6 +157,8 @@ class EthscriptionsController < ApplicationController
       head 404
       return
     end
+    
+    response.headers.delete('X-Frame-Options')
     
     set_cache_control_headers(
       max_age: 6,

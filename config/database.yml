@@ -7,10 +7,10 @@ primary: &primary
   <<: *default
   url: <%= ENV.fetch("DATABASE_URL") %>
 
-primary_replica: &primary_replica
-  <<: *default
-  url: <%= ENV['DATABASE_REPLICA_URL'] %>
-  replica: true
+# primary_replica: &primary_replica
+#   <<: *default
+#   url: <%= ENV['DATABASE_REPLICA_URL'] %>
+#   replica: true
 
 development:
   primary:
